@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Schedule, Invoice, Vendor, Verdict, Escalation } from '@/lib/types';
 import { WhyButton } from './WhyButton';
 import type { MemoryItem } from './LearningStrip';
-import { gbp, shortDate, LABEL, PANEL, PILL, BTN_SM } from './ledger';
+import { gbp, plain, shortDate, LABEL, PANEL, PILL, BTN_SM } from './ledger';
 
 type Props = {
   schedule: Schedule | null;
@@ -291,7 +291,7 @@ function InvoiceCard({ escalation, invoice, vendor, distressScore, originalDistr
   const verdicts = AGENT_NAMES.map((n) => state.agentRows[n]).filter((r) => r.status === 'done').map((r) => (r as { verdict: Verdict }).verdict);
   const started = fanOutStarted(state);
   const done = allDone(state);
-  const reasons = escalation.reasonForEscalation.split(';').map((r) => r.trim()).filter(Boolean);
+  const reasons = plain(escalation.reasonForEscalation).split(';').map((r) => r.trim()).filter(Boolean);
 
   return (
     <article className={`${PANEL} animate-row-in space-y-3 p-4 transition-colors duration-300 ${alertActive || distressScore >= 0.5 ? 'border-floor' : ''}`}>

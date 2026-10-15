@@ -4,7 +4,7 @@
 // rule literals; this panel is the on-screen image of what runs in code.
 
 import type { PolicyRule } from '@/lib/policy';
-import { LABEL, PANEL } from './ledger';
+import { plain, LABEL, PANEL } from './ledger';
 
 type Props = {
   autoPayRules: readonly PolicyRule[];
@@ -39,8 +39,8 @@ function RuleList({ title, rules }: { title: string; rules: readonly PolicyRule[
       <ul className="mt-3 divide-y divide-rule border-y border-rule">
         {rules.map((r) => (
           <li key={r.id} className="py-3">
-            <div className="text-sm">{r.label}</div>
-            <div className="mt-0.5 text-[13px] text-ink-2">{r.detail}</div>
+            <div className="text-sm">{plain(r.label)}</div>
+            <div className="mt-0.5 text-[13px] text-ink-2">{plain(r.detail)}</div>
           </li>
         ))}
       </ul>
