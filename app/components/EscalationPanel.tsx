@@ -5,12 +5,15 @@ import type { Schedule, Invoice, Vendor, Verdict, Escalation } from '@/lib/types
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { WhyButton } from './WhyButton';
 
 type Props = {
   schedule: Schedule | null;
   invoices: Invoice[];
   vendors: Vendor[];
   releasedIds: string[];
+  memoryReasons: Record<string, string>;
+  onWhy: (invoiceId: string) => Promise<string>;
   onScheduleChange: (s: Schedule) => void;
   onDecisionRecorded?: (d: { invoiceId: string; verdict: 'approve' | 'defer' | 'reject' }) => void;
 };
@@ -54,7 +57,7 @@ function gbp(n: number): string {
   return `£${n.toLocaleString('en-GB', { maximumFractionDigits: 0 })}`;
 }
 
-export function EscalationPanel({ schedule, invoices, vendors, releasedIds, onDecisionRecorded }: Props) {
+export function EscalationPanel({ schedule, invoices, vendors, releasedIds, memoryReasons, onWhy, onDecisionRecorded }: Props) {
   const [cardStates, setCardStates] = useState<Record<string, CardState>>({});
 
   if (!schedule) return null;
@@ -215,6 +218,8 @@ export function EscalationPanel({ schedule, invoices, vendors, releasedIds, onDe
             vendor={vendor}
             distressScore={effectiveDistress}
             originalDistress={entry.distressScore}
+            memoryReason={memoryReasons[vendor.id]}
+            onWhy={onWhy}
             payDate={entry.payDate}
             state={state}
             onInvestigate={() => investigate(esc.invoiceId)}
@@ -232,6 +237,8 @@ type CardProps = {
   vendor: Vendor;
   distressScore: number;
   originalDistress: number;
+  memoryReason: string | undefined;
+  onWhy: (invoiceId: string) => Promise<string>;
   payDate: string;
   state: CardState;
   onInvestigate: () => void;
@@ -254,7 +261,7 @@ function allDone(state: CardState): boolean {
   });
 }
 
-function InvoiceCard({ escalation, invoice, vendor, distressScore, originalDistress, payDate, state, onInvestigate, onDecide }: CardProps) {
+function InvoiceCard({ escalation, invoice, vendor, distressScore, originalDistress, memoryReason, onWhy, payDate, state, onInvestigate, onDecide }: CardProps) {
   const alertActive = state.alertActive && distressScore !== originalDistress;
   const verdicts = AGENT_NAMES.map((n) => state.agentRows[n]).filter((r) => r.status === 'done').map((r) => (r as { verdict: Verdict }).verdict);
   const dissent = verdicts.length === AGENT_NAMES.length && new Set(verdicts.map((v) => v.recommendation)).size > 1;
@@ -273,6 +280,9 @@ function InvoiceCard({ escalation, invoice, vendor, distressScore, originalDistr
               {vendor.name} · {gbp(invoice.amount)} · due {invoice.dueDate} · scheduled {payDate}
             </div>
             <div className="text-xs mt-2"><strong>Why escalated:</strong> {escalation.reasonForEscalation}</div>
+            {memoryReason && (
+              <div className="text-xs mt-1"><strong>Memory:</strong> {memoryReason}</div>
+            )}
           </div>
           <div className="flex flex-col items-end gap-1 shrink-0">
             <SpecterBadge score={distressScore} />
@@ -282,6 +292,8 @@ function InvoiceCard({ escalation, invoice, vendor, distressScore, originalDistr
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        <WhyButton invoiceId={invoice.id} onAsk={onWhy} />
+
         {!started && (
           <Button onClick={onInvestigate} variant="default" size="sm">
             Investigate (3 agents in parallel)

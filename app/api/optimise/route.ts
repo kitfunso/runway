@@ -7,8 +7,32 @@ import { z } from 'zod';
 import { loadAll } from '@/lib/data';
 import { getDistressScore } from '@/lib/specter';
 import { optimise, simulate } from '@/lib/optimiser';
+import { recall } from '@/lib/memory';
 import { newScheduleId } from '@/lib/runs';
-import type { DistressMap, Invoice } from '@/lib/types';
+import type { DistressMap, Invoice, Vendor } from '@/lib/types';
+
+const MEMORY_DISTRESS = 0.95;
+const MEMORY_REASON = 'finance manager rejected/deferred before';
+
+// Only sentences that record a rejection or deferral count; approvals mention the vendor too.
+function applyMemoryGate(
+  past: string,
+  vendors: readonly Vendor[],
+  distressScores: DistressMap,
+): Record<string, string> {
+  const flagged = past
+    .split(/\n|(?<=\.)\s+/)
+    .filter((s) => /reject|defer/i.test(s))
+    .join('\n')
+    .toLowerCase();
+  const reasons: Record<string, string> = {};
+  for (const v of vendors) {
+    if (!flagged.includes(v.name.toLowerCase())) continue;
+    distressScores[v.id] = Math.max(distressScores[v.id] ?? 0, MEMORY_DISTRESS);
+    reasons[v.id] = MEMORY_REASON;
+  }
+  return reasons;
+}
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -38,6 +62,11 @@ export async function POST(req: NextRequest) {
       }),
     );
 
+    // Memory gate: a vendor the finance manager rejected or deferred before
+    // gets a distress score that the existing policy escalates.
+    const past = await recall('vendors the finance manager rejected or deferred');
+    const memoryReasons = applyMemoryGate(past, vendors, distressScores);
+
     // Baseline: every invoice pay-on-due, ignore breach.
     const baseline = optimise({ invoices, vendors, forecast, distressScores, forceNaive: true });
     const invoiceById = new Map<string, Invoice>(invoices.map((i) => [i.id, i]));
@@ -59,7 +88,7 @@ export async function POST(req: NextRequest) {
     // No server-side persistence on Cloudflare. Client holds the schedule
     // and includes whatever subsequent calls need (distressScore for
     // /api/investigate, autoPayCount + decisions for /api/execute).
-    return NextResponse.json(full);
+    return NextResponse.json({ ...full, memoryReasons });
   } catch (err) {
     console.error('optimise error', err);
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });

@@ -53,6 +53,7 @@ export function Dashboard({ invoices, vendors, forecast, autoPayRules, escalateR
   const [replanned, setReplanned] = useState(false);
   const [changes, setChanges] = useState<ReplanChange[]>([]);
   const [replanSummary, setReplanSummary] = useState<string | null>(null);
+  const [memoryReasons, setMemoryReasons] = useState<Record<string, string>>({});
   const hasSchedule = schedule !== null;
   const inflowPaid = inflow?.paid === true;
 
@@ -90,7 +91,20 @@ export function Dashboard({ invoices, vendors, forecast, autoPayRules, escalateR
       body: JSON.stringify({ extraCash: extra }),
     });
     if (!res.ok) throw new Error(`/api/optimise returned ${res.status}`);
-    return res.json();
+    const { memoryReasons: reasons = {}, ...next }: Schedule & { memoryReasons?: Record<string, string> } = await res.json();
+    setMemoryReasons(reasons);
+    return next;
+  }
+
+  async function askWhy(invoiceId: string): Promise<string> {
+    const res = await fetch('/api/why', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ invoiceId }),
+    });
+    if (!res.ok) throw new Error(`/api/why returned ${res.status}`);
+    const data: { answer: string } = await res.json();
+    return data.answer;
   }
 
   async function replan(amount: number, before: Schedule) {
@@ -249,12 +263,15 @@ export function Dashboard({ invoices, vendors, forecast, autoPayRules, escalateR
             vendors={vendors}
             forecast={liveForecast}
             changes={changes}
+            onWhy={askWhy}
           />
           <EscalationPanel
             schedule={schedule}
             invoices={invoices}
             vendors={vendors}
             releasedIds={changes.filter((c) => c.kind === 'released').map((c) => c.invoiceId)}
+            memoryReasons={memoryReasons}
+            onWhy={askWhy}
             onScheduleChange={setSchedule}
             onDecisionRecorded={(d) => setDecisions((arr) => [...arr, d])}
           />

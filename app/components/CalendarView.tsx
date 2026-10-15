@@ -5,6 +5,7 @@
 
 import type { Schedule, Invoice, Vendor, Forecast } from '@/lib/types';
 import type { ReplanChange } from '@/lib/replan';
+import { WhyButton } from './WhyButton';
 
 type Props = {
   schedule: Schedule | null;
@@ -12,6 +13,7 @@ type Props = {
   vendors: Vendor[];
   forecast: Forecast;
   changes: ReplanChange[];
+  onWhy: (invoiceId: string) => Promise<string>;
 };
 
 function gbp(n: number): string {
@@ -32,7 +34,7 @@ const REASON_LABEL: Record<string, string> = {
   'flagged':       'flagged',
 };
 
-export function CalendarView({ schedule, invoices, vendors, changes }: Props) {
+export function CalendarView({ schedule, invoices, vendors, changes, onWhy }: Props) {
   if (!schedule) {
     return (
       <div className="rounded-lg border bg-card p-4">
@@ -68,6 +70,7 @@ export function CalendarView({ schedule, invoices, vendors, changes }: Props) {
               <th className="px-4 py-2 font-medium">Reason</th>
               <th className="px-4 py-2 font-medium">Specter</th>
               <th className="px-4 py-2 font-medium text-right">Saving</th>
+              <th className="px-4 py-2 font-medium">Why</th>
             </tr>
           </thead>
           <tbody>
@@ -95,6 +98,9 @@ export function CalendarView({ schedule, invoices, vendors, changes }: Props) {
                   </td>
                   <td className="px-4 py-2 tabular-nums text-right text-emerald-700 dark:text-emerald-400">
                     {e.projectedSaving > 0 ? gbp(e.projectedSaving) : ''}
+                  </td>
+                  <td className="px-4 py-2">
+                    <WhyButton invoiceId={e.invoiceId} onAsk={onWhy} />
                   </td>
                 </tr>
               );
