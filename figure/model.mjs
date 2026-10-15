@@ -9,19 +9,19 @@ export const AUTO_LIMIT = 5000;
 // Left to right along the manifold.
 export const VALVES = [
   { id: "INV-EARLY-01", vendor: "Brightleaf Logistics", amount: 4500, kind: "auto" },
-  { id: "INV-DISC5-07", vendor: "Halcyon Energy Co", amount: 4400, kind: "floor" },
+  { id: "INV-RELEASE-01", vendor: "Coral Cloud Hosting", amount: 1500, kind: "floor" },
   { id: "INV-EARLY-02", vendor: "Coral Cloud Hosting", amount: 4400, kind: "auto" },
   { id: "remembered", vendor: "rejected vendor", amount: 0, kind: "pinned" },
 ];
 
 // Lowest projected balance over the 60-day horizon at each step.
 export const LOW = {
-  start: 50945,
-  afterFirst: 46445,
-  afterSecond: 42045,
-  heldWouldLeave: 37645,
-  afterInflow: 48045,
-  afterRelease: 43645,
+  start: 49400,
+  afterFirst: 44900,
+  afterSecond: 40500,
+  heldWouldLeave: 39000,
+  afterInflow: 46500,
+  afterRelease: 45000,
 };
 
 export const HELD = VALVES[1];

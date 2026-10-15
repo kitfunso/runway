@@ -114,7 +114,7 @@ const body = k.plateHtml({
   caption:
     "The water is the lowest balance Runway projects over the next 60 days, and the collar on the float's rod is the £40,000 floor. " +
     "Small invoices from trusted suppliers flow out on their own: £4,500 to Brightleaf and £4,400 to Coral Cloud. " +
-    "The rocker locks the early £4,400 Halcyon payment, because it would take the low point to £37,645, below the floor. " +
+    "The rocker locks a £1,500 Coral Cloud invoice, because paying it would take the low point to £39,000, below the floor. " +
     "When Acme Ltd pays its £6,000 invoice the level rises, the rocker lifts and the held payment goes out. " +
     "Each payment prints a line on the tape, a hash-chained audit trail. " +
     "The pin in the punched card is a rejection hippo remembered, so that vendor's valve stays shut.",
