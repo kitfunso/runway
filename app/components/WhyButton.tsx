@@ -32,12 +32,12 @@ export function WhyButton({ invoiceId, onAsk }: Props) {
         type="button"
         onClick={() => void ask()}
         disabled={loading}
-        className="rounded-md border px-2 py-0.5 text-xs hover:bg-muted disabled:opacity-50"
+        className="text-[12px] font-medium text-ink-2 underline decoration-rule underline-offset-2 hover:text-ink hover:decoration-ink disabled:opacity-40"
       >
-        {loading ? 'Asking...' : 'Why?'}
+        {loading ? 'Asking...' : 'Why'}
       </button>
       {answer && (
-        <p className="text-xs text-muted-foreground whitespace-pre-line max-w-[320px]">{answer}</p>
+        <p className="max-w-[300px] whitespace-pre-line text-[12px] leading-snug text-ink-2">{answer}</p>
       )}
     </div>
   );

@@ -1,11 +1,14 @@
 'use client';
 
-// 60-day payment schedule. Using a coloured table sorted by payDate (Gantt
-// fallback, per CLAUDE.md "spending >30 min on calendar visuals" guard).
+// The schedule as a ledger: one hairline row per payment, held rows on top,
+// money right-aligned, Stripe transfer ids once Execute has run.
 
-import type { Schedule, Invoice, Vendor, Forecast } from '@/lib/types';
+import type { Schedule, Invoice, Vendor, Forecast, ScheduleEntry } from '@/lib/types';
 import type { ReplanChange } from '@/lib/replan';
+import type { Transfer } from './AuditBand';
+import type { MemoryItem } from './LearningStrip';
 import { WhyButton } from './WhyButton';
+import { gbp, shortDate, LABEL, PANEL, PILL } from './ledger';
 
 type Props = {
   schedule: Schedule | null;
@@ -13,93 +16,130 @@ type Props = {
   vendors: Vendor[];
   forecast: Forecast;
   changes: ReplanChange[];
+  transfers: Transfer[];
+  trusted: MemoryItem[];
   onWhy: (invoiceId: string) => Promise<string>;
 };
 
-function gbp(n: number): string {
-  return `£${n.toLocaleString('en-GB', { maximumFractionDigits: 0 })}`;
-}
+const TRANSFER_URL = 'https://dashboard.stripe.com/test/connect/transfers/';
 
-const REASON_TONE: Record<string, string> = {
-  'auto-discount': 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
-  'auto-due':      'bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30',
-  'auto-stretch':  'bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/30',
-  'flagged':       'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30',
+const RULE_LABEL: Record<ScheduleEntry['reason'], string> = {
+  'auto-discount': 'Early for discount',
+  'auto-due': 'On due date',
+  'auto-stretch': 'Stretched, cash first',
+  'flagged': 'Needs a decision',
 };
 
-const REASON_LABEL: Record<string, string> = {
-  'auto-discount': 'discount',
-  'auto-due':      'on due',
-  'auto-stretch':  'stretch',
-  'flagged':       'flagged',
+type Action = 'paid' | 'released' | 'trusted' | 'held' | 'scheduled';
+
+const ACTION_PILL: Record<Action, { label: string; cls: string }> = {
+  paid: { label: 'Paid', cls: 'border-money/40 text-money' },
+  released: { label: 'Released by inflow', cls: 'border-money/40 text-money' },
+  trusted: { label: 'Trusted', cls: 'border-money/40 text-money' },
+  held: { label: 'Held', cls: 'border-held/40 bg-held-tint text-held' },
+  scheduled: { label: 'Scheduled', cls: 'border-rule text-ink-2' },
 };
 
-export function CalendarView({ schedule, invoices, vendors, changes, onWhy }: Props) {
+const ORDER: Record<Action, number> = { held: 0, released: 1, trusted: 2, paid: 3, scheduled: 3 };
+
+const TH = 'sticky top-0 z-10 h-10 border-b border-rule bg-sheet px-3 text-left text-[12px] font-medium uppercase tracking-[0.06em] text-ink-2 shadow-[0_1px_0_rgba(0,0,0,.04)]';
+const TD = 'h-11 px-3 align-middle';
+
+export function CalendarView({ schedule, invoices, vendors, changes, transfers, trusted, onWhy }: Props) {
   if (!schedule) {
     return (
-      <div className="rounded-lg border bg-card p-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Schedule</h2>
-        <p className="text-sm text-muted-foreground mt-2">Optimise to populate the schedule.</p>
-      </div>
+      <section className={`${PANEL} p-6`}>
+        <div className={LABEL}>Schedule</div>
+        <p className="mt-2 text-sm text-ink-2">Optimise to build the payment schedule.</p>
+      </section>
     );
   }
 
   const invById = new Map(invoices.map((i) => [i.id, i]));
   const vendById = new Map(vendors.map((v) => [v.id, v]));
   const changeById = new Map(changes.map((c) => [c.invoiceId, c]));
-  const sorted = [...schedule.entries].sort((a, b) => a.payDate.localeCompare(b.payDate));
+  const transferById = new Map(transfers.map((t) => [t.invoiceId, t]));
+  const trustedById = new Map(trusted.map((t) => [t.invoiceId, t]));
+
+  const actionOf = (e: ScheduleEntry): Action => {
+    if (e.reason === 'flagged') return 'held';
+    if (transferById.get(e.invoiceId)?.transferId) return 'paid';
+    if (changeById.get(e.invoiceId)?.kind === 'released') return 'released';
+    if (trustedById.has(e.invoiceId)) return 'trusted';
+    return 'scheduled';
+  };
+  const rows = schedule.entries
+    .map((e) => ({ e, action: actionOf(e) }))
+    .sort((a, b) => ORDER[a.action] - ORDER[b.action] || a.e.payDate.localeCompare(b.e.payDate));
+  const held = rows.filter((r) => r.action === 'held').length;
 
   return (
-    <div className="rounded-lg border bg-card overflow-hidden">
-      <div className="px-4 py-3 border-b flex items-center justify-between">
-        <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Schedule</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {sorted.length} payments, schedule id <code>{schedule.scheduleId}</code>
-          </p>
+    <section className={`${PANEL} overflow-hidden`}>
+      <div className="flex items-baseline justify-between gap-4 px-6 pb-4 pt-5">
+        <div className="flex items-baseline gap-3">
+          <h2 className={LABEL}>Schedule</h2>
+          <span className="text-[13px] text-ink-2">
+            {rows.length} payments{held > 0 ? `, ${held} held` : ''}
+          </span>
         </div>
+        <span className="font-mono text-[12px] text-ink-2">{schedule.scheduleId.slice(0, 8)}</span>
       </div>
-      <div className="max-h-[480px] overflow-y-auto">
-        <table className="w-full text-sm">
-          <thead className="sticky top-0 bg-muted/70 backdrop-blur">
-            <tr className="text-left">
-              <th className="px-4 py-2 font-medium">Pay date</th>
-              <th className="px-4 py-2 font-medium">Invoice</th>
-              <th className="px-4 py-2 font-medium">Vendor</th>
-              <th className="px-4 py-2 font-medium text-right">Amount</th>
-              <th className="px-4 py-2 font-medium">Reason</th>
-              <th className="px-4 py-2 font-medium">Specter</th>
-              <th className="px-4 py-2 font-medium text-right">Saving</th>
-              <th className="px-4 py-2 font-medium">Why</th>
+      <div className="max-h-[560px] overflow-auto border-t border-rule">
+        <table className="w-full min-w-[820px] border-collapse text-[13px]">
+          <thead>
+            <tr>
+              <th className={`${TH} pl-6`}>Date</th>
+              <th className={TH}>Vendor</th>
+              <th className={TH}>Invoice</th>
+              <th className={`${TH} text-right`}>Amount</th>
+              <th className={TH}>Action</th>
+              <th className={TH}>Rule</th>
+              <th className={`${TH} text-right`}>Risk</th>
+              <th className={TH}>Stripe</th>
+              <th className={`${TH} pr-6`}><span className="sr-only">Why</span></th>
             </tr>
           </thead>
           <tbody>
-            {sorted.map((e) => {
+            {rows.map(({ e, action }, i) => {
               const inv = invById.get(e.invoiceId);
               const vendor = inv ? vendById.get(inv.vendorId) : undefined;
+              const transfer = transferById.get(e.invoiceId);
+              const pill = ACTION_PILL[action];
+              const moved = changeById.get(e.invoiceId)?.kind === 'moved';
+              const trust = trustedById.get(e.invoiceId);
               return (
-                <tr key={e.invoiceId} className="border-t hover:bg-muted/30">
-                  <td className="px-4 py-2 tabular-nums whitespace-nowrap">{e.payDate}</td>
-                  <td className="px-4 py-2 font-mono text-xs">{e.invoiceId}</td>
-                  <td className="px-4 py-2 truncate max-w-[180px]">{vendor?.name ?? inv?.vendorId ?? '-'}</td>
-                  <td className="px-4 py-2 tabular-nums text-right">{inv ? gbp(inv.amount) : '-'}</td>
-                  <td className="px-4 py-2">
-                    <span className={`inline-block px-2 py-0.5 rounded border text-[11px] ${REASON_TONE[e.reason] ?? ''}`}>
-                      {REASON_LABEL[e.reason] ?? e.reason}
+                <tr
+                  key={`${e.invoiceId}-${action}`}
+                  className={`animate-row-in border-b border-rule last:border-b-0 ${action === 'held' ? 'bg-held-tint' : ''}`}
+                  style={{ animationDelay: `${Math.min(i, 20) * 30}ms` }}
+                >
+                  <td className={`${TD} whitespace-nowrap pl-6 font-mono`}>{shortDate(e.payDate)}</td>
+                  <td className={`${TD} max-w-[180px] truncate`}>{vendor?.name ?? inv?.vendorId ?? '-'}</td>
+                  <td className={`${TD} whitespace-nowrap font-mono text-[12px] text-ink-2`}>{e.invoiceId}</td>
+                  <td className={`${TD} whitespace-nowrap text-right font-mono`}>{inv ? gbp(inv.amount) : '-'}</td>
+                  <td className={TD}>
+                    <span className={`${PILL} ${pill.cls}`} title={action === 'trusted' ? trust?.reason : undefined}>
+                      {pill.label}
                     </span>
-                    {changeById.has(e.invoiceId) && (
-                      <span className="ml-1 text-[11px] text-muted-foreground">
-                        {changeById.get(e.invoiceId)?.kind === 'released' ? 'Released by inflow' : 'Moved by inflow'}
-                      </span>
+                  </td>
+                  <td className={`${TD} whitespace-nowrap text-[12px] text-ink-2`}>
+                    {RULE_LABEL[e.reason]}
+                    {e.projectedSaving > 0 && <span className="text-money">, saves <span className="font-mono">{gbp(e.projectedSaving)}</span></span>}
+                    {moved && ', moved by inflow'}
+                  </td>
+                  <td className={`${TD} text-right font-mono text-[12px] ${e.distressScore >= 0.5 ? 'text-floor' : 'text-ink-2'}`}>
+                    {e.distressScore.toFixed(2)}
+                  </td>
+                  <td className={`${TD} whitespace-nowrap font-mono text-[12px]`}>
+                    {transfer?.transferId ? (
+                      <a href={TRANSFER_URL + transfer.transferId} target="_blank" rel="noreferrer" className="text-ink underline decoration-rule underline-offset-2 hover:decoration-ink">
+                        {transfer.transferId.slice(0, 12)}
+                      </a>
+                    ) : (
+                      <span className="text-ink-2">–</span>
                     )}
                   </td>
-                  <td className="px-4 py-2">
-                    <SpecterBadge score={e.distressScore} />
-                  </td>
-                  <td className="px-4 py-2 tabular-nums text-right text-emerald-700 dark:text-emerald-400">
-                    {e.projectedSaving > 0 ? gbp(e.projectedSaving) : ''}
-                  </td>
-                  <td className="px-4 py-2">
+                  <td className={`${TD} pr-6`}>
                     <WhyButton invoiceId={e.invoiceId} onAsk={onWhy} />
                   </td>
                 </tr>
@@ -108,18 +148,6 @@ export function CalendarView({ schedule, invoices, vendors, changes, onWhy }: Pr
           </tbody>
         </table>
       </div>
-    </div>
-  );
-}
-
-function SpecterBadge({ score }: { score: number }) {
-  const tone =
-    score >= 0.5 ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30' :
-    score >= 0.3 ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30' :
-    'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30';
-  return (
-    <span className={`inline-block px-2 py-0.5 rounded border text-[11px] tabular-nums ${tone}`}>
-      {score.toFixed(2)}
-    </span>
+    </section>
   );
 }
