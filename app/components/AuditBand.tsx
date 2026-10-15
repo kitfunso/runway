@@ -61,9 +61,9 @@ export function AuditBand({ executed, transfers, audit, verified, verifying, aud
         <table className="w-full border-collapse text-[13px]">
           <thead>
             <tr className="sticky top-0 border-b border-rule bg-sheet">
-              <th className="h-9 pr-3 text-left text-[12px] font-medium uppercase tracking-[0.06em] text-ink-2">Invoice</th>
-              <th className="h-9 px-3 text-left text-[12px] font-medium uppercase tracking-[0.06em] text-ink-2">Stripe</th>
-              <th className="h-9 pl-3 text-right text-[12px] font-medium uppercase tracking-[0.06em] text-ink-2">Amount</th>
+              <th className="h-9 pr-3 text-left text-[12px] font-medium text-ink-2">Invoice</th>
+              <th className="h-9 px-3 text-left text-[12px] font-medium text-ink-2">Stripe</th>
+              <th className="h-9 pl-3 text-right text-[12px] font-medium text-ink-2">Amount</th>
             </tr>
           </thead>
           <tbody>

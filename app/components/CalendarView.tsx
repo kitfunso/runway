@@ -41,7 +41,7 @@ const ACTION_PILL: Record<Action, { label: string; cls: string }> = {
 
 const ORDER: Record<Action, number> = { held: 0, released: 1, trusted: 2, paid: 3, scheduled: 3 };
 
-const TH = 'sticky top-0 z-10 h-10 border-b border-rule bg-sheet px-2.5 text-left text-[12px] font-medium uppercase tracking-[0.06em] text-ink-2 shadow-[0_1px_0_rgba(0,0,0,.04)]';
+const TH = 'sticky top-0 z-10 h-10 border-b border-rule bg-sheet px-2.5 text-left text-[12px] font-medium text-ink-2 shadow-[0_1px_0_rgba(0,0,0,.04)]';
 const TD = 'h-11 px-2.5 align-middle';
 
 export function CalendarView({ schedule, invoices, vendors, changes, transfers, trusted, onWhy }: Props) {

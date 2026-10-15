@@ -20,7 +20,7 @@ export function plain(text: string): string {
   return text.replace(/Specter distress/g, 'Vendor risk');
 }
 
-export const LABEL = 'text-[12px] font-medium uppercase tracking-[0.06em] text-ink-2';
+export const LABEL = 'text-[12px] font-medium text-ink-2';
 export const PANEL = 'rounded-[6px] border border-rule bg-sheet';
 export const BTN = 'inline-flex h-9 items-center justify-center rounded-[6px] px-4 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40';
 export const BTN_PRIMARY = `${BTN} bg-ink text-paper hover:bg-ink/85`;

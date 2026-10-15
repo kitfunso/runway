@@ -96,15 +96,15 @@ export function RunwayHero({ forecast, schedule, invoices, inflow, extraCash, cu
         <div className="flex flex-wrap items-end gap-x-12 gap-y-4">
           <div>
             <div className={LABEL}>Cash today</div>
-            <div className="mt-2 font-serif text-[56px] leading-[0.9] tabular-nums">{gbp(cashToday)}</div>
+            <div className="mt-2 font-medium tracking-[-0.025em] text-[56px] leading-[0.9] tabular-nums">{gbp(cashToday)}</div>
           </div>
           <div>
             <div className={LABEL}>Floor</div>
-            <div className="mt-2 font-serif text-[32px] leading-none text-floor tabular-nums">{gbp(forecast.cashFloor)}</div>
+            <div className="mt-2 font-medium tracking-[-0.025em] text-[32px] leading-none text-floor tabular-nums">{gbp(forecast.cashFloor)}</div>
           </div>
           <div>
             <div className={LABEL}>Lowest point</div>
-            <div className={`mt-2 font-serif text-[32px] leading-none tabular-nums ${breach ? 'text-floor' : ''}`}>
+            <div className={`mt-2 font-medium tracking-[-0.025em] text-[32px] leading-none tabular-nums ${breach ? 'text-floor' : ''}`}>
               {gbp(lowCash)} <span className="font-sans text-sm text-ink-2">on {shortDate(addDays(runway.day0, low))}</span>
             </div>
           </div>

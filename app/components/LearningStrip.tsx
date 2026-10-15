@@ -9,14 +9,15 @@ export type MemoryItem = { invoiceId: string; vendorId: string; reason: string }
 export type LearningRun = { run: number; at: string; asked: number; byMemory: number; autoPaid: number };
 
 const BAR_H = 48;
+const times = (n: number): string => (n === 0 ? 'not once' : n === 1 ? 'once' : n === 2 ? 'twice' : `${n} times`);
 
 export function LearningStrip({ runs }: { runs: LearningRun[] }) {
   const max = Math.max(1, ...runs.flatMap((r) => [r.asked, r.byMemory]));
   const first = runs[0]!;
   const last = runs[runs.length - 1]!;
   const copy = runs.length > 1
-    ? `Asked you ${first.asked} times in run ${first.run}, ${last.asked} times in run ${last.run}`
-    : `Asked you ${first.asked} times in run ${first.run}`;
+    ? `Asked you ${times(first.asked)} in run ${first.run}, ${times(last.asked)} in run ${last.run}`
+    : `Asked you ${times(first.asked)} in run ${first.run}`;
 
   return (
     <section className={`${PANEL} flex flex-wrap items-end gap-x-10 gap-y-4 px-6 py-4`}>

@@ -1,0 +1,279 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=block" rel="stylesheet">
+<style>html,body{margin:0;padding:0;background:transparent;overflow:hidden}canvas{display:block}</style>
+</head><body><canvas id="c" width="1920" height="1080"></canvas>
+<script>
+const W = 1920, H = 1080, L = 140, R = 1780;
+const C = { paper:'#F7F5F0', ink:'#141414', rule:'#E3DFD6', sec:'#5C5A55', green:'#0B6B4B', red:'#A3301F', amber:'#A86B12' };
+const SANS = '"IBM Plex Sans"', MONO = '"IBM Plex Mono"';
+const ctx = document.getElementById('c').getContext('2d');
+
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const P = (t, s, d) => clamp((t - s) / d);
+const expo = x => x >= 1 ? 1 : 1 - Math.pow(2, -10 * x);
+const back = x => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+const quart = x => 1 - Math.pow(1 - x, 4);
+const lerp = (a, b, x) => a + (b - a) * x;
+const gbp = v => '£' + Math.round(v).toLocaleString('en-GB');
+
+function font(w, px, fam = SANS) { ctx.font = `${w} ${px}px ${fam}`; }
+
+function text(s, x, y, o = {}) {
+  const { w = 400, px = 24, fam = SANS, color = C.ink, align = 'left', ls = 0, alpha = 1 } = o;
+  if (alpha <= 0) return;
+  ctx.save(); font(w, px, fam); ctx.letterSpacing = ls + 'px'; ctx.fillStyle = color;
+  ctx.globalAlpha *= alpha; ctx.textAlign = align; ctx.textBaseline = 'alphabetic';
+  ctx.fillText(s, x, y); ctx.restore();
+}
+
+function hline(x1, x2, y, p, color, lw = 1, dash = null) {
+  if (p <= 0) return;
+  ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = lw; if (dash) ctx.setLineDash(dash);
+  const yy = lw % 2 ? Math.round(y) + 0.5 : Math.round(y);
+  ctx.beginPath(); ctx.moveTo(x1, yy); ctx.lineTo(lerp(x1, x2, p), yy); ctx.stroke(); ctx.restore();
+}
+
+function rrect(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+
+function moneyMetrics(px, w, nd) {
+  font(w, px); ctx.letterSpacing = '0px';
+  const dw = Math.max(...'0123456789'.split('').map(d => ctx.measureText(d).width));
+  const cw = ctx.measureText(',').width, pw = ctx.measureText('£').width;
+  return { dw, cw, pw, total: pw + nd * dw + Math.floor((nd - 1) / 3) * cw };
+}
+
+// Odometer: each digit sits in a fixed slot (tabular) and rolls when the place below wraps.
+function money(v, x, y, o = {}) {
+  const { px = 88, w = 500, color = C.ink, align = 'left', nd = 5, alpha = 1 } = o;
+  if (alpha <= 0) return;
+  ctx.save(); ctx.globalAlpha *= alpha;
+  const m = moneyMetrics(px, w, nd);
+  ctx.fillStyle = color; ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+  let cx = align === 'right' ? x - m.total : x;
+  ctx.fillText('£', cx, y); cx += m.pw;
+  const lh = px * 1.05, top = y - px * 0.82, bot = y + px * 0.18;
+  for (let k = nd - 1; k >= 0; k--) {
+    const d = v / Math.pow(10, k), fl = Math.floor(d), fr = d - fl;
+    const roll = k === 0 ? fr : clamp((fr - 0.9) / 0.1);
+    const show = k === 0 || v >= Math.pow(10, k) - 0.5;
+    if (show) {
+      const a = String(fl % 10), b = String((fl + 1) % 10), off = roll * lh;
+      ctx.save(); ctx.beginPath(); ctx.rect(cx - 2, top, m.dw + 4, bot - top); ctx.clip();
+      ctx.fillText(a, cx + (m.dw - ctx.measureText(a).width) / 2, y - off);
+      if (roll > 0.001) ctx.fillText(b, cx + (m.dw - ctx.measureText(b).width) / 2, y + lh - off);
+      ctx.restore();
+    }
+    cx += m.dw;
+    if (k > 0 && k % 3 === 0) { if (show) ctx.fillText(',', cx, y); cx += m.cw; }
+  }
+  ctx.restore();
+}
+
+function wordmark(x, y, px, t0, t) {
+  ctx.save(); font(600, px); ctx.letterSpacing = (-px * 0.045) + 'px'; ctx.fillStyle = C.ink;
+  const word = 'Runway';
+  for (let i = 0; i < word.length; i++) {
+    const p = P(t, t0 + i * 0.045, 0.8);
+    if (p <= 0) continue;
+    const dx = ctx.measureText(word.slice(0, i)).width;
+    ctx.globalAlpha = clamp(p * 5);
+    ctx.fillText(word[i], x + dx, y - 70 * (1 - back(p)));
+  }
+  ctx.restore();
+}
+
+function phrases(list, x, y, o, t) {
+  ctx.save(); font(o.w, o.px); ctx.letterSpacing = (o.ls || 0) + 'px'; ctx.fillStyle = o.color || C.ink;
+  let cx = x;
+  for (const [s, t0] of list) {
+    const adv = ctx.measureText(s + ' ').width, p = P(t, t0, 0.7);
+    if (p > 0) { ctx.globalAlpha = clamp(p * 3); ctx.fillText(s, cx, y + (o.rise || 22) * (1 - expo(p))); }
+    cx += adv;
+  }
+  ctx.restore();
+}
+
+function stamp(s, cx, cy, rot, p, color) {
+  if (p <= 0) return;
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot); const sc = lerp(2.1, 1, expo(p)); ctx.scale(sc, sc);
+  ctx.globalAlpha = clamp(p * 5) * 0.9;
+  font(600, 23); ctx.letterSpacing = '4px';
+  const tw = ctx.measureText(s).width, pw = tw + 34, ph = 54;
+  ctx.strokeStyle = color; ctx.lineWidth = 4; rrect(-pw / 2, -ph / 2, pw, ph, 5); ctx.stroke();
+  ctx.lineWidth = 1.5; rrect(-pw / 2 + 7, -ph / 2 + 7, pw - 14, ph - 14, 2); ctx.stroke();
+  ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(s, 2.5, 2);
+  ctx.restore();
+}
+
+function paper() { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, H); ctx.fillStyle = C.paper; ctx.fillRect(0, 0, W, H); }
+
+function header(left, right, t) {
+  const p = expo(P(t, 0, 1.0));
+  text(left, L, 92, { w: 500, px: 20, color: C.sec, alpha: clamp(p * 2) });
+  text(right, R, 92, { w: 500, px: 20, color: C.sec, align: 'right', alpha: clamp(p * 2) });
+  hline(L, R, 112, p, C.ink, 2);
+}
+
+// ---------- Scene 1: cold open ----------
+const S1 = [80000, 76500, 71200, 73800, 66400, 61000, 57300, 52100, 48600, 44800, 42300];
+function s1(t) {
+  paper();
+  header('Operating account · GBP', 'Cash position', t);
+  const x0 = L, x1 = R, yOf = v => 300 + (85000 - v) / 50000 * 340, fy = yOf(40000);
+  const g = expo(P(t, 0.1, 1.0));
+  for (const v of [80000, 60000]) {
+    hline(x0, x1, yOf(v), g, C.rule, 1);
+    text(gbp(v), x1, yOf(v) - 10, { px: 18, color: C.sec, align: 'right', alpha: g });
+  }
+  hline(x0, x1, fy, expo(P(t, 0.25, 1.1)), C.red, 2, [12, 9]);
+  text('Safety line £40,000', x1, fy + 32, { w: 500, px: 22, color: C.red, align: 'right', alpha: expo(P(t, 0.8, 0.6)) });
+
+  const n = S1.length, seg = (x1 - x0) / n, h = quart(P(t, 0.35, 3.5)), hx = x0 + h * (x1 - x0);
+  ctx.save(); ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.lineJoin = 'miter'; ctx.beginPath();
+  ctx.moveTo(x0, yOf(S1[0]));
+  for (let i = 0; i < n; i++) {
+    const xe = x0 + (i + 1) * seg;
+    if (hx < xe) { ctx.lineTo(hx, yOf(S1[i])); break; }
+    ctx.lineTo(xe, yOf(S1[i]));
+    if (i + 1 < n) ctx.lineTo(xe, yOf(S1[i + 1]));
+  }
+  if (h > 0) ctx.stroke();
+  ctx.restore();
+  const idx = Math.min(h * n, n - 0.0001), i = Math.floor(idx), f = idx - i;
+  const vNow = i + 1 < n ? lerp(S1[i], S1[i + 1], expo(clamp((f - 0.8) / 0.2))) : S1[n - 1];
+  const yNow = yOf(f > 0.999 && i + 1 < n ? S1[i + 1] : S1[i]);
+  if (h > 0) { ctx.fillStyle = C.ink; ctx.beginPath(); ctx.arc(hx, yNow, 7, 0, Math.PI * 2); ctx.fill(); }
+
+  const a = expo(P(t, 0, 0.6));
+  text('CASH BALANCE', L, 170, { w: 500, px: 18, color: C.sec, ls: 2, alpha: a });
+  money(vNow, L - 4, 258, { px: 84, w: 500, alpha: a, nd: 5 });
+
+  wordmark(L - 8, 850, 230, 3.2, t);
+  const sub = "An AI agent that pays your company's bills through Stripe.".split(' ');
+  phrases(sub.map((w, k) => [w, 3.9 + k * 0.045]), L, 962, { w: 400, px: 40, color: C.ink, rise: 14 }, t);
+}
+
+// ---------- Scene 2: the problem ----------
+const ROWS = [
+  { s: 'Brightleaf Logistics', id: 'INV-EARLY-01', a: 4500, t: 0.9 },
+  { s: 'Coral Cloud Hosting', id: 'INV-EARLY-02', a: 4400, t: 1.8 },
+  { s: 'Acme Office Supplies', id: 'INV-FLOOR-BREACH', a: 45000, t: 2.7 },
+  { s: 'Jade Studios', tag: 'NEW', id: 'INV-LARGE-NEW', a: 8000, t: 4.4 },
+  { s: 'Iridium Components', id: 'INV-SPECTER-DISTRESSED', a: 3500, t: 5.2 },
+];
+const OPEN = 80000, FLOOR = 40000;
+const landT = r => r.t + 0.5;
+function balanceAt(t, upto = ROWS.length) {
+  let v = OPEN;
+  for (let i = 0; i < upto; i++) v -= ROWS[i].a * expo(P(t, landT(ROWS[i]), 0.7));
+  return v;
+}
+function s2(t) {
+  paper();
+  const B = landT(ROWS[2]) + 0.12, hit = B + 0.2;
+  const j = P(t, hit, 0.18), dy = j > 0 && j < 1 ? Math.sin(j * Math.PI * 3) * (1 - j) * 5 : 0;
+  ctx.translate(0, dy);
+  header('Payables ledger · due this week', 'Opening balance £80,000', t);
+  phrases([['Bills due.', 0.3], ['One balance.', 1.8], ["Don't run out of cash.", B]], L, 196, { w: 600, px: 58, ls: -1.2 }, t);
+
+  const hy = 290, rowTop = 312, rh = 80;
+  const ha = expo(P(t, 0.4, 0.6));
+  text('SUPPLIER', L, hy, { w: 500, px: 17, color: C.sec, ls: 1.8, alpha: ha });
+  text('INVOICE', 760, hy, { w: 500, px: 17, color: C.sec, ls: 1.8, alpha: ha });
+  text('AMOUNT', 1430, hy, { w: 500, px: 17, color: C.sec, ls: 1.8, align: 'right', alpha: ha });
+  text('BALANCE', R, hy, { w: 500, px: 17, color: C.sec, ls: 1.8, align: 'right', alpha: ha });
+  hline(L, R, rowTop - 2, expo(P(t, 0.4, 0.9)), C.ink, 1);
+
+  ROWS.forEach((r, i) => {
+    const y = rowTop + i * rh, base = y + 50;
+    if (t < r.t) return;
+    if (i === 2) {
+      const ft = t - B, on = ft >= 0 && ft < 0.7 && Math.floor(ft / 0.1) % 2 === 0;
+      if (ft >= 0) { ctx.save(); ctx.globalAlpha = on ? 0.2 : 0.07; ctx.fillStyle = C.red; ctx.fillRect(L - 16, y, R - L + 32, rh - 1); ctx.restore(); }
+    }
+    hline(L, R, y + rh, expo(P(t, r.t, 0.7)), C.rule, 1);
+    const ps = P(t, r.t, 0.42), ns = Math.floor(r.s.length * ps);
+    text(r.s.slice(0, ns), L, base, { w: 500, px: 28 });
+    if (ps > 0 && ps < 1) { font(500, 28); const cw = ctx.measureText(r.s.slice(0, ns)).width; ctx.fillStyle = C.ink; ctx.fillRect(L + cw + 3, base - 24, 3, 30); }
+    if (r.tag) {
+      const pt = expo(P(t, r.t + 0.45, 0.35));
+      if (pt > 0) {
+        font(500, 28); const x = L + ctx.measureText(r.s).width + 16;
+        ctx.save(); ctx.globalAlpha = pt; ctx.strokeStyle = C.amber; ctx.lineWidth = 1.5; rrect(x, base - 22, 62, 28, 4); ctx.stroke(); ctx.restore();
+        text(r.tag, x + 31, base - 2, { w: 600, px: 15, ls: 1.5, color: C.amber, align: 'center', alpha: pt });
+      }
+    }
+    const pi = P(t, r.t + 0.18, 0.32);
+    text(r.id.slice(0, Math.floor(r.id.length * pi)), 760, base - 1, { px: 23, fam: MONO, color: C.sec });
+    const pa = P(t, r.t + 0.3, 0.55);
+    money(r.a * expo(pa), 1430, base, { px: 28, w: 500, align: 'right', nd: String(r.a).length, alpha: clamp(pa * 4) });
+    const pb = P(t, landT(r), 0.7);
+    if (pb > 0) {
+      const v = balanceAt(t, i + 1);
+      money(v, R, base, { px: 28, w: 500, align: 'right', nd: 5, color: v < FLOOR ? C.red : C.ink, alpha: clamp(pb * 4) });
+    }
+  });
+
+  stamp('BELOW THE LINE', 1152, rowTop + 2 * rh + rh / 2, -0.07, P(t, hit, 0.22), C.red);
+
+  const by = rowTop + 5 * rh, ba = expo(P(t, 0.6, 0.8));
+  hline(L, R, by + 26, ba, C.ink, 1); hline(L, R, by + 32, ba, C.ink, 1);
+  const v = balanceAt(t), red = v < FLOOR;
+  text('RUNNING BALANCE', L, by + 100, { w: 500, px: 18, color: C.sec, ls: 2, alpha: ba });
+  ctx.save(); ctx.globalAlpha = ba; ctx.strokeStyle = C.red; ctx.lineWidth = 2; ctx.setLineDash([8, 6]);
+  ctx.beginPath(); ctx.moveTo(L, by + 136); ctx.lineTo(L + 56, by + 136); ctx.stroke(); ctx.restore();
+  text('Safety line £40,000', L + 72, by + 143, { w: 500, px: 22, color: C.red, alpha: ba });
+
+  const gx0 = 620, gx1 = 1260, gy = by + 118, gl = gx1 - gx0, fx = gx0 + gl * FLOOR / OPEN;
+  ctx.save(); ctx.globalAlpha = ba;
+  ctx.fillStyle = C.rule; ctx.fillRect(gx0, gy - 6, gl * ba, 12);
+  ctx.fillStyle = red ? C.red : C.ink; ctx.fillRect(gx0, gy - 6, gl * clamp(v / OPEN) * ba, 12);
+  ctx.fillStyle = C.red; ctx.fillRect(Math.round(fx) - 1, gy - 20, 2, 40);
+  ctx.restore();
+
+  const fpx = 104, m = moneyMetrics(fpx, 500, 5), fyb = by + 150;
+  const ft = t - B, on = ft >= 0 && ft < 0.7 && Math.floor(ft / 0.1) % 2 === 0;
+  if (on) { ctx.fillStyle = C.red; ctx.fillRect(R - m.total - 22, fyb - fpx * 0.86, m.total + 44, fpx * 1.1); }
+  money(v, R, fyb, { px: fpx, w: 500, align: 'right', nd: 5, color: on ? C.paper : red ? C.red : C.ink, alpha: ba });
+}
+
+// ---------- Scene 9: outro ----------
+function s9(t) {
+  paper();
+  wordmark(L - 8, 500, 230, 0.15, t);
+  const beats = 'Earn the discounts. Never run out of cash.'.split(' ').map((w, k) => [w, 1.15 + k * 0.12]);
+  phrases(beats, L, 620, { w: 500, px: 66, ls: -1, rise: 26 }, t);
+  hline(L, R, 690, expo(P(t, 3.1, 1.0)), C.ink, 2);
+  const parts = [['Stripe test mode', 3.5], ['·', 3.6], ['hippo memory', 3.7], ['·', 3.8], ['github.com/kitfunso/runway', 3.9]];
+  phrases(parts, L, 750, { w: 400, px: 28, color: C.sec, rise: 10 }, t);
+}
+
+// ---------- Chips ----------
+const CHIPS = { 3: 'How it works', 4: 'Plans every bill, asks about the risky ones', 5: 'Real payments through Stripe, test mode',
+  6: 'Customer pays. Runway re-plans.', 7: 'Remembers what you decided', 8: 'Every pound explained' };
+function chip(n) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, H);
+  const num = String(n - 2).padStart(2, '0'), label = CHIPS[n];
+  font(500, 22, MONO); ctx.letterSpacing = '0px'; const nw = ctx.measureText(num).width;
+  font(500, 30); const lw = ctx.measureText(label).width;
+  const padX = 26, gap = 18, h = 68, w = padX + nw + gap + lw + padX, x = 72, y = H - 72 - h;
+  ctx.fillStyle = C.ink; rrect(x, y, w, h, 6); ctx.fill();
+  const base = y + h / 2 + 10.5;
+  text(num, x + padX, base - 1, { w: 500, px: 22, fam: MONO, color: C.paper, alpha: 0.6 });
+  text(label, x + padX + nw + gap, base, { w: 500, px: 30, color: C.paper });
+}
+
+window.render = (scene, t) => {
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.letterSpacing = '0px';
+  if (scene === 's1') s1(t); else if (scene === 's2') s2(t); else if (scene === 's9') s9(t); else if (scene === 'chip') chip(t);
+};
+window.ready = (async () => {
+  const specs = ['400 40px "IBM Plex Sans"', '500 40px "IBM Plex Sans"', '600 40px "IBM Plex Sans"', '400 40px "IBM Plex Mono"', '500 40px "IBM Plex Mono"'];
+  await Promise.all(specs.map(s => document.fonts.load(s, 'Runway £0123456789')));
+  await document.fonts.ready;
+  return [...document.fonts].filter(f => f.family.includes('IBM Plex') && f.status === 'loaded').length;
+})();
+</script></body></html>

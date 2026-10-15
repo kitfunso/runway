@@ -14,9 +14,9 @@
   --color-held: #A86B12;
   --color-held-tint: #FBF3E4;
 
-  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
-  --font-serif: var(--font-instrument-serif), Georgia, serif;
+  --font-sans: var(--font-plex), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+  --font-serif: var(--font-plex), ui-sans-serif, sans-serif;
 
   --animate-row-in: row-in 200ms ease-out both;
   --animate-stub-wait: stub-wait 1.2s ease-in-out infinite;
@@ -58,6 +58,7 @@
     color: var(--color-ink);
     font-family: var(--font-sans);
     font-size: 14px;
+    font-variant-numeric: tabular-nums;
     -webkit-font-smoothing: antialiased;
   }
   .font-mono {

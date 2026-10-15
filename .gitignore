@@ -58,3 +58,10 @@ Thumbs.db
 
 # anatomy figure screenshots
 figure/shots/
+runs-*/
+video/out/
+video/captures/
+video/gfx/*.mp4
+video/gfx/*.png
+video/gfx/stills/
+video/gfx/log-*

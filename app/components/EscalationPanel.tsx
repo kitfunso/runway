@@ -107,7 +107,7 @@ export function EscalationPanel({ schedule, invoices, vendors, releasedIds, memo
               <div className="shrink-0 font-mono text-[16px] leading-tight">{inv ? gbp(inv.amount) : '-'}</div>
             </div>
             <p className="mt-2 text-[13px] text-ink-2">
-              <span className="mr-2 font-mono text-[11px] uppercase tracking-[0.06em] text-ink">hippo</span>
+              <span className="mr-2 text-[12px] font-medium text-ink">hippo</span>
               {m.reason}
             </p>
           </div>
@@ -195,7 +195,8 @@ export function EscalationPanel({ schedule, invoices, vendors, releasedIds, memo
 
   async function decide(invoiceId: string, verdict: 'approve' | 'defer' | 'reject') {
     if (!schedule) return;
-    const reason = `${verdict} (sub-agent verdicts reviewed)`;
+    const flagged = schedule.escalations.find((e) => e.invoiceId === invoiceId)?.reasonForEscalation;
+    const reason = flagged ? `${plain(flagged)}, after reviewing the three checks` : 'after reviewing the three checks';
     try {
       const res = await fetch('/api/decide', {
         method: 'POST',

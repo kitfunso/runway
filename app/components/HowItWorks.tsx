@@ -2,7 +2,7 @@
 export function HowItWorks() {
   return (
     <section className="mx-auto w-full max-w-[760px]">
-      <h2 className="mb-3 text-[12px] font-medium uppercase tracking-[0.06em] text-ink-2">How it works</h2>
+      <h2 className="mb-3 text-[12px] font-medium text-ink-2">How it works</h2>
       <iframe
         src="/how-it-works/index.html"
         title="How Runway works"

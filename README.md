@@ -1,15 +1,15 @@
 # Runway
 
-> Floater scheduled the payments. Runway pays them: real Stripe transfers under the same policy, a hash-chained audit trail, live cash re-planning when a customer pays, and hippo memory of the finance manager's decisions.
+> Floater scheduled the payments. Runway pays them: real Stripe test-mode payouts under the same policy, a hash-chained audit trail, live cash re-planning when a customer pays, and hippo memory of the finance manager's decisions.
 
 ## Built on Floater
 
 Built on Floater, our open-source April 2026 build (https://github.com/kitfunso/Floater), used as the starting template as the hackathon rules allow. Everything in the list below was built on the night of 15 October 2026:
 
-- Real money movement in Stripe test mode: `/api/execute` sends a Transfer per paid invoice and returns the `transfers` list (transfer id, or the reason none was sent).
+- Real money movement in Stripe test mode: `/api/execute` sends a payout per paid invoice from the Stripe balance (a Connect transfer instead when the vendor has a `stripeAccountId`) and returns the `transfers` list (payout id, or the reason none was sent). Connect accounts were not used: the sandbox's Connect platform profile is shared with live mode, and onboarding test sellers needed live-mode changes.
 - A hash-chained audit trail (`lib/audit.ts`, `runs/audit.jsonl`) with `/api/verify` to prove the chain is intact.
 - `/api/inflow` and the QR card: a customer pays an open £6,000 invoice from their phone, the dashboard sees it within 3 seconds, adds it to opening cash and re-plans (`extraCash` on `/api/optimise`).
-- Memory on hippo (`lib/memory.ts`) with a rejected/deferred-vendor gate in `/api/optimise`.
+- Memory on hippo (`lib/memory.ts`) across payment runs: `/api/optimise` holds a rejected vendor and a deferred invoice, trusts an approved vendor (history and distress rules waived, amount and floor rules kept), and logs each run to `/api/learning` for the Learning strip.
 - A Why button on every schedule row and escalation card (`/api/why`).
 
 Everything else (optimiser, policy, sub-agent fan-out, calendar, escalation panel) is Floater.
@@ -22,7 +22,7 @@ Everything else (optimiser, policy, sub-agent fan-out, calendar, escalation pane
 - Auto-pays everything that satisfies the policy below; flags the rest for a human.
 - For each flagged invoice, three sub-agents (vendor-health, cash-impact, discount-npv) run in parallel and the UI shows the timing strip. Under `DEMO_REPLAY=1` they return fixture verdicts; the live `@cursor/sdk` path exists in `lib/cursor.ts` but is not on the demo path.
 - One human Approve / Defer / Reject per escalation. Everything else auto-executes when you click Execute.
-- Executing sends Stripe test-mode Transfers to vendors that have a connected test account (three of the twelve after setup). Any other vendor shows "no rail" in the transfer list; nothing is sent.
+- Executing sends one Stripe test-mode payout per paid invoice; each id links to the Stripe test dashboard.
 
 ## Policy
 

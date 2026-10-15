@@ -229,7 +229,7 @@ export function Dashboard({ invoices, vendors, forecast, autoPayRules, escalateR
     <main className="mx-auto min-h-screen max-w-[1376px] px-4 pb-16 sm:px-8">
       <header className="flex flex-wrap items-center justify-between gap-4 border-b border-rule py-5">
         <div className="flex items-baseline gap-3">
-          <h1 className="font-serif text-[28px] leading-none">Runway</h1>
+          <h1 className="font-semibold tracking-[-0.02em] text-[26px] leading-none">Runway</h1>
           <span className="text-sm text-ink-2">Treasury agent</span>
         </div>
         <div className="flex flex-wrap items-center gap-3">
