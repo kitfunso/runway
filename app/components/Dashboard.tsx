@@ -14,7 +14,6 @@ import { RunwayHero } from './RunwayChart';
 import { InflowCard, type InflowState } from './InflowCard';
 import { AuditBand, type Transfer, type VerifyResult } from './AuditBand';
 import { LearningStrip, type LearningRun, type MemoryItem } from './LearningStrip';
-import { HowItWorks } from './HowItWorks';
 import { diffSchedules, type ReplanChange } from '@/lib/replan';
 import { gbp, BTN_PRIMARY, BTN_SECONDARY } from './ledger';
 
@@ -306,8 +305,6 @@ export function Dashboard({ invoices, vendors, forecast, autoPayRules, escalateR
           auditError={auditError}
           onVerify={() => void loadAudit(true)}
         />
-
-        <HowItWorks />
 
         <PolicyPanel autoPayRules={autoPayRules} escalateRules={escalateRules} />
       </div>

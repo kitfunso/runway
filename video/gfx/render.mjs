@@ -5,7 +5,7 @@ import { pathToFileURL, fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
-const SCENES = { s1: 9, s2: 11, s9: 7 };
+const SCENES = { s1: 11, s2: 14, s9: 7 };
 const CHIPS = [3, 4, 5, 6, 7, 8];
 const FPS = 30;
 const want = process.argv.slice(2);

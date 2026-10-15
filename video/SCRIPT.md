@@ -4,9 +4,7 @@
 
 **0:11** Most small businesses never take it. They pay on the due date to stay safe, because paying early can leave them short of cash. And cash flow problems close fifty thousand UK firms a year.
 
-**0:25** No accounting software decides when to pay each bill. So in April we built Floater to plan it: pay early, on time, or late.
-
-**0:33** Runway is Floater that actually pays. I hit Optimise: forty-one bills planned around the cash we must keep, three and a half thousand pounds saved, and four risky ones it asks me about.
+**0:25** Runway is an AI assistant for your finance team. It looks at every bill you owe and the cash in the bank, pays early when the discount is worth it, and never lets cash fall below your safety line. I hit Optimise: forty-one bills planned around the cash we must keep, three and a half thousand pounds saved, and four risky ones it asks me about.
 
 **0:48** I approve one, reject a brand new vendor, and delay a big one. I hit Execute. Thirty-eight real payments go out through Stripe, each written to a log where any change would show.
 
