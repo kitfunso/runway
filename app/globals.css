@@ -2,51 +2,76 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Treasury ledger tokens: docs/DESIGN.md is the source; one colour per meaning. */
+@theme inline {
+  --color-paper: #F7F5F0;
+  --color-sheet: #FFFFFF;
+  --color-ink: #141414;
+  --color-ink-2: #5C5A55;
+  --color-rule: #E3DFD6;
+  --color-money: #0B6B4B;
+  --color-floor: #A3301F;
+  --color-held: #A86B12;
+  --color-held-tint: #FBF3E4;
+
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-serif: var(--font-instrument-serif), Georgia, serif;
+
+  --animate-row-in: row-in 200ms ease-out both;
+  --animate-stub-wait: stub-wait 1.2s ease-in-out infinite;
+
+  @keyframes row-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes stub-wait {
+    0%, 100% { border-color: #E3DFD6; }
+    50% { border-color: #5C5A55; }
+  }
+}
+
 @layer base {
   :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --radius: 0.625rem;
-  }
-  .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
+    --background: #F7F5F0;
+    --foreground: #141414;
+    --card: #FFFFFF;
+    --card-foreground: #141414;
+    --popover: #FFFFFF;
+    --popover-foreground: #141414;
+    --primary: #141414;
+    --primary-foreground: #F7F5F0;
+    --secondary: #FFFFFF;
+    --secondary-foreground: #141414;
+    --muted: #F7F5F0;
+    --muted-foreground: #5C5A55;
+    --accent: #F7F5F0;
+    --accent-foreground: #141414;
+    --destructive: #A3301F;
+    --border: #E3DFD6;
+    --input: #E3DFD6;
+    --ring: #5C5A55;
+    --radius: 6px;
   }
   body {
-    background: var(--background);
-    color: var(--foreground);
-    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+  }
+  .runway-line {
+    transition: d 300ms ease-out;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
