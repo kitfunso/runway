@@ -2,10 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { Schedule, Invoice, Vendor, Verdict, Escalation } from '@/lib/types';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { WhyButton } from './WhyButton';
+import type { MemoryItem } from './LearningStrip';
+import { gbp, shortDate, LABEL, PANEL, PILL, BTN_SM } from './ledger';
 
 type Props = {
   schedule: Schedule | null;
@@ -13,6 +12,7 @@ type Props = {
   vendors: Vendor[];
   releasedIds: string[];
   memoryReasons: Record<string, string>;
+  heldByMemory: MemoryItem[];
   onWhy: (invoiceId: string) => Promise<string>;
   onScheduleChange: (s: Schedule) => void;
   onDecisionRecorded?: (d: { invoiceId: string; verdict: 'approve' | 'defer' | 'reject' }) => void;
@@ -53,14 +53,20 @@ function freshState(): CardState {
   };
 }
 
-function gbp(n: number): string {
-  return `£${n.toLocaleString('en-GB', { maximumFractionDigits: 0 })}`;
-}
+const SM_PRIMARY = `${BTN_SM} bg-ink text-paper hover:bg-ink/85`;
+const SM_SECONDARY = `${BTN_SM} border border-rule bg-sheet text-ink hover:border-ink-2`;
 
-export function EscalationPanel({ schedule, invoices, vendors, releasedIds, memoryReasons, onWhy, onDecisionRecorded }: Props) {
+export function EscalationPanel({ schedule, invoices, vendors, releasedIds, memoryReasons, heldByMemory, onWhy, onDecisionRecorded }: Props) {
   const [cardStates, setCardStates] = useState<Record<string, CardState>>({});
 
-  if (!schedule) return null;
+  if (!schedule) {
+    return (
+      <section className={`${PANEL} p-4`}>
+        <h2 className={LABEL}>Needs a decision</h2>
+        <p className="mt-2 text-sm text-ink-2">Optimise to see which bills need you.</p>
+      </section>
+    );
+  }
 
   const invById = new Map(invoices.map((i) => [i.id, i]));
   const vendById = new Map(vendors.map((v) => [v.id, v]));
@@ -70,30 +76,45 @@ export function EscalationPanel({ schedule, invoices, vendors, releasedIds, memo
     const entry = schedule.entries.find((e) => e.invoiceId === id);
     if (!inv || !entry) return null;
     return (
-      <Card key={`released-${id}`} className="border">
-        <CardContent className="py-3 text-sm flex items-center justify-between gap-3 flex-wrap">
-          <span>
-            <span className="font-mono">{id}</span> · {vendById.get(inv.vendorId)?.name ?? inv.vendorId} · {gbp(inv.amount)} · now pays {entry.payDate}
-          </span>
-          <span className="text-green-700 dark:text-green-400 font-medium">Released by inflow</span>
-        </CardContent>
-      </Card>
+      <div key={`released-${id}`} className={`${PANEL} animate-row-in flex items-center justify-between gap-3 p-4`}>
+        <div className="min-w-0">
+          <div className="truncate text-sm font-medium">{vendById.get(inv.vendorId)?.name ?? inv.vendorId}</div>
+          <div className="mt-0.5 font-mono text-[12px] text-ink-2">{id} · pays {shortDate(entry.payDate)}</div>
+        </div>
+        <div className="shrink-0 text-right">
+          <div className="font-mono text-[16px] leading-tight">{gbp(inv.amount)}</div>
+          <span className={`${PILL} mt-1 border-money/40 text-money`}>Released by inflow</span>
+        </div>
+      </div>
     );
   });
 
-  if (schedule.escalations.length === 0) {
-    return (
-      <div className="space-y-3">
-        {released}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">Escalations</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">No escalations - all invoices auto-paid.</CardContent>
-        </Card>
+  const memoryHeld = heldByMemory.length > 0 && (
+    <div className="space-y-2 pt-3">
+      <div className="flex items-baseline gap-2">
+        <h3 className={LABEL}>Held by memory</h3>
+        <span className="font-mono text-[12px] text-ink-2">{heldByMemory.length}</span>
       </div>
-    );
-  }
+      {heldByMemory.map((m) => {
+        const inv = invById.get(m.invoiceId);
+        return (
+          <div key={`mem-${m.invoiceId}`} className={`${PANEL} animate-row-in p-4`}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="truncate text-sm font-medium">{vendById.get(m.vendorId)?.name ?? m.vendorId}</div>
+                <div className="mt-0.5 font-mono text-[12px] text-ink-2">{m.invoiceId}</div>
+              </div>
+              <div className="shrink-0 font-mono text-[16px] leading-tight">{inv ? gbp(inv.amount) : '-'}</div>
+            </div>
+            <p className="mt-2 text-[13px] text-ink-2">
+              <span className="mr-2 font-mono text-[11px] uppercase tracking-[0.06em] text-ink">hippo</span>
+              {m.reason}
+            </p>
+          </div>
+        );
+      })}
+    </div>
+  );
 
   function getState(invoiceId: string): CardState {
     return cardStates[invoiceId] ?? freshState();
@@ -189,21 +210,28 @@ export function EscalationPanel({ schedule, invoices, vendors, releasedIds, memo
     }
   }
 
+  const held = schedule.escalations;
   return (
     <section className="space-y-3">
-      {released}
-      <div className="flex items-baseline justify-between gap-3 flex-wrap">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Escalations ({schedule.escalations.length})
-        </h2>
-        <div className="flex items-center gap-3">
-          <p className="text-xs text-muted-foreground">3 sub-agents fan out via @cursor/sdk</p>
-          <Button onClick={triggerSpecterAlert} size="sm" variant="outline">
-            Trigger Specter alert
-          </Button>
+      <div className="flex items-baseline justify-between gap-3">
+        <div className="flex items-baseline gap-2">
+          <h2 className={LABEL}>Needs a decision</h2>
+          <span className="font-mono text-[12px] text-ink-2">{held.length}</span>
         </div>
+        {held.length > 0 && (
+          <button type="button" onClick={() => void triggerSpecterAlert()} className={SM_SECONDARY}>
+            Trigger risk alert
+          </button>
+        )}
       </div>
-      {schedule.escalations.map((esc) => {
+      {held.length > 0 && (
+        <p className="text-[12px] text-ink-2">Investigate runs three checks in parallel through the Cursor SDK.</p>
+      )}
+      {released}
+      {held.length === 0 && (
+        <div className={`${PANEL} p-4 text-sm text-ink-2`}>Nothing needs you. Every bill pays on its own.</div>
+      )}
+      {held.map((esc) => {
         const inv = invById.get(esc.invoiceId);
         const vendor = inv ? vendById.get(inv.vendorId) : undefined;
         const entry = schedule.entries.find((e) => e.invoiceId === esc.invoiceId);
@@ -227,6 +255,7 @@ export function EscalationPanel({ schedule, invoices, vendors, releasedIds, memo
           />
         );
       })}
+      {memoryHeld}
     </section>
   );
 }
@@ -245,12 +274,6 @@ type CardProps = {
   onDecide: (v: 'approve' | 'defer' | 'reject') => void;
 };
 
-function severityBorder(distressScore: number, dissent: boolean): string {
-  if (distressScore >= 0.5) return 'border-rose-500/40 bg-rose-500/5';
-  if (dissent)              return 'border-amber-500/40 bg-amber-500/5';
-  return 'border-emerald-500/40 bg-emerald-500/5';
-}
-
 function fanOutStarted(state: CardState): boolean {
   return state.fanOutStartedAt !== null;
 }
@@ -261,84 +284,82 @@ function allDone(state: CardState): boolean {
   });
 }
 
+const DECISION_LABEL = { approve: 'Approved', defer: 'Deferred', reject: 'Rejected' } as const;
+
 function InvoiceCard({ escalation, invoice, vendor, distressScore, originalDistress, memoryReason, onWhy, payDate, state, onInvestigate, onDecide }: CardProps) {
   const alertActive = state.alertActive && distressScore !== originalDistress;
   const verdicts = AGENT_NAMES.map((n) => state.agentRows[n]).filter((r) => r.status === 'done').map((r) => (r as { verdict: Verdict }).verdict);
-  const dissent = verdicts.length === AGENT_NAMES.length && new Set(verdicts.map((v) => v.recommendation)).size > 1;
-  const border = severityBorder(distressScore, dissent);
-
   const started = fanOutStarted(state);
   const done = allDone(state);
+  const reasons = escalation.reasonForEscalation.split(';').map((r) => r.trim()).filter(Boolean);
 
   return (
-    <Card className={`border-2 ${border} transition-colors duration-300`}>
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <CardTitle className="text-base font-mono">{invoice.id}</CardTitle>
-            <div className="text-sm text-muted-foreground mt-0.5">
-              {vendor.name} · {gbp(invoice.amount)} · due {invoice.dueDate} · scheduled {payDate}
-            </div>
-            <div className="text-xs mt-2"><strong>Why escalated:</strong> {escalation.reasonForEscalation}</div>
-            {memoryReason && (
-              <div className="text-xs mt-1"><strong>Memory:</strong> {memoryReason}</div>
-            )}
-          </div>
-          <div className="flex flex-col items-end gap-1 shrink-0">
-            <SpecterBadge score={distressScore} />
-            {alertActive && <Badge variant="destructive" className="text-[10px] animate-pulse">SPECTER ALERT</Badge>}
-            <Badge variant="outline" className="text-[10px]">{vendor.paymentHistory}</Badge>
-          </div>
+    <article className={`${PANEL} animate-row-in space-y-3 p-4 transition-colors duration-300 ${alertActive || distressScore >= 0.5 ? 'border-floor' : ''}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-medium">{vendor.name}</div>
+          <div className="mt-0.5 font-mono text-[12px] text-ink-2">{invoice.id} · due {shortDate(invoice.dueDate)} · plan {shortDate(payDate)}</div>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
+        <div className="shrink-0 text-right">
+          <div className="font-mono text-[16px] leading-tight">{gbp(invoice.amount)}</div>
+          <span className={`${PILL} mt-1 border-held/40 bg-held-tint text-held`}>Held</span>
+        </div>
+      </div>
+
+      <ul className="space-y-0.5 text-[13px]">
+        {reasons.map((r) => (
+          <li key={r} className="flex gap-2"><span className="text-ink-2">·</span><span>{r}</span></li>
+        ))}
+      </ul>
+      {memoryReason && <p className="text-[13px] italic text-ink-2">{memoryReason}</p>}
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-ink-2">
+        <span>Vendor risk <span className={`font-mono ${distressScore >= 0.5 ? 'text-floor' : 'text-ink'}`}>{distressScore.toFixed(2)}</span></span>
+        <span>History <span className="text-ink">{vendor.paymentHistory}</span></span>
+        {alertActive && <span className={`${PILL} border-floor/40 text-floor`}>Risk alert</span>}
         <WhyButton invoiceId={invoice.id} onAsk={onWhy} />
+      </div>
 
-        {!started && (
-          <Button onClick={onInvestigate} variant="default" size="sm">
-            Investigate (3 agents in parallel)
-          </Button>
-        )}
+      {!started && (
+        <button type="button" onClick={onInvestigate} className={SM_SECONDARY}>Investigate</button>
+      )}
 
-        {started && state.narration && (
-          <div className="text-sm rounded-md border bg-muted/40 p-2 italic">
-            {state.narration}
-          </div>
-        )}
+      {started && state.narration && (
+        <p className="border-l-2 border-rule pl-3 text-[13px] italic text-ink-2">{state.narration}</p>
+      )}
 
-        {started && (
-          <div className="space-y-2">
-            {AGENT_NAMES.map((name) => (
-              <AgentRow key={name} name={name} row={state.agentRows[name]} />
-            ))}
-          </div>
-        )}
+      {started && (
+        <div className="space-y-2 border-t border-rule pt-3">
+          {AGENT_NAMES.map((name) => (
+            <AgentRow key={name} name={name} row={state.agentRows[name]} />
+          ))}
+        </div>
+      )}
 
-        {done && state.fanOutStartedAt !== null && state.fanOutDoneAt !== null && (
-          <div className="text-[11px] text-muted-foreground font-mono tabular-nums pt-1 border-t">
-            {AGENT_NAMES.length} agents in {state.fanOutDoneAt - state.fanOutStartedAt}ms · ~{
-              AGENT_NAMES.reduce((sum, n) => {
-                const r = state.agentRows[n];
-                return sum + (r.status === 'done' ? r.durationMs : 0);
-              }, 0)
-            }ms sequential
-          </div>
-        )}
+      {done && state.fanOutStartedAt !== null && state.fanOutDoneAt !== null && (
+        <div className="font-mono text-[11px] text-ink-2">
+          {AGENT_NAMES.length} checks in {state.fanOutDoneAt - state.fanOutStartedAt}ms, ~{
+            AGENT_NAMES.reduce((sum, n) => {
+              const r = state.agentRows[n];
+              return sum + (r.status === 'done' ? r.durationMs : 0);
+            }, 0)
+          }ms one after another
+        </div>
+      )}
 
-        {done && !state.decisionMade && verdicts.length === AGENT_NAMES.length && (
-          <div className="flex gap-2 pt-1">
-            <Button onClick={() => onDecide('approve')} size="sm" variant="default">Approve</Button>
-            <Button onClick={() => onDecide('defer')}   size="sm" variant="secondary">Defer</Button>
-            <Button onClick={() => onDecide('reject')}  size="sm" variant="destructive">Reject</Button>
-          </div>
-        )}
-        {state.decisionMade && (
-          <div className="text-sm pt-1 text-emerald-700 dark:text-emerald-400">
-            ✓ Decision: <strong>{state.decisionMade}</strong>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      {done && !state.decisionMade && verdicts.length === AGENT_NAMES.length && (
+        <div className="flex gap-2">
+          <button type="button" onClick={() => onDecide('approve')} className={SM_PRIMARY}>Approve</button>
+          <button type="button" onClick={() => onDecide('defer')} className={SM_SECONDARY}>Defer</button>
+          <button type="button" onClick={() => onDecide('reject')} className={SM_SECONDARY}>Reject</button>
+        </div>
+      )}
+      {state.decisionMade && (
+        <div className={`text-[13px] font-medium ${state.decisionMade === 'approve' ? 'text-money' : state.decisionMade === 'reject' ? 'text-floor' : 'text-ink'}`}>
+          {DECISION_LABEL[state.decisionMade]}
+        </div>
+      )}
+    </article>
   );
 }
 
@@ -348,9 +369,9 @@ function AgentRow({ name, row }: { name: AgentName; row: AgentRowState }) {
   }
   if (row.status === 'error') {
     return (
-      <div className="flex items-start gap-3 text-sm">
-        <div className="w-32 shrink-0 font-mono text-xs text-muted-foreground">{name}</div>
-        <span className="text-destructive text-xs">error: {row.error}</span>
+      <div className="flex items-start gap-3 text-[12px]">
+        <div className="w-24 shrink-0 font-mono text-ink-2">{name}</div>
+        <span className="text-floor">error: {row.error}</span>
       </div>
     );
   }
@@ -365,51 +386,32 @@ function RunningRow({ name, startedAt }: { name: AgentName; startedAt: number })
     return () => { if (tickRef.current) clearInterval(tickRef.current); };
   }, [startedAt]);
   return (
-    <div className="flex items-start gap-3 text-sm">
-      <div className="w-32 shrink-0 font-mono text-xs text-muted-foreground flex items-center gap-2">
-        <span className="inline-block size-1.5 rounded-full bg-sky-500 animate-pulse" />
-        {name}
-      </div>
-      <span className="px-2 py-0.5 rounded border text-[11px] bg-sky-500/10 border-sky-500/30 text-sky-700 dark:text-sky-300 shrink-0 animate-pulse">
-        running…
-      </span>
-      <div className="text-muted-foreground text-xs leading-snug font-mono tabular-nums">{elapsed}ms</div>
+    <div className="flex items-baseline gap-3 text-[12px]">
+      <div className="w-24 shrink-0 font-mono text-ink-2">{name}</div>
+      <span className="text-ink-2">running</span>
+      <span className="ml-auto font-mono text-ink-2">{elapsed}ms</span>
     </div>
   );
 }
 
 function DoneRow({ name, verdict, durationMs }: { name: AgentName; verdict: Verdict; durationMs: number }) {
-  const tone = recommendationTone(verdict.recommendation);
   return (
-    <div className="flex items-start gap-3 text-sm animate-in fade-in slide-in-from-left-1 duration-300">
-      <div className="w-32 shrink-0 font-mono text-xs text-muted-foreground flex items-center gap-2">
-        <span className="inline-block size-1.5 rounded-full bg-emerald-500" />
-        {name}
+    <div className="animate-row-in flex items-baseline gap-3 text-[12px]">
+      <div className="w-24 shrink-0 font-mono text-ink-2">{name}</div>
+      <div className="min-w-0 flex-1">
+        <span className={`font-medium ${recommendationTone(verdict.recommendation)}`}>{verdict.recommendation}</span>
+        <span className="text-ink-2"> {verdict.rationale}</span>
       </div>
-      <span className={`px-2 py-0.5 rounded border text-[11px] shrink-0 ${tone}`}>{verdict.recommendation}</span>
-      <div className="text-muted-foreground text-xs leading-snug flex-1 min-w-0">{verdict.rationale}</div>
-      <div className="text-[10px] font-mono tabular-nums text-muted-foreground shrink-0">{durationMs}ms</div>
+      <div className="shrink-0 font-mono text-[11px] text-ink-2">{durationMs}ms</div>
     </div>
   );
 }
 
 function recommendationTone(r: Verdict['recommendation']): string {
   switch (r) {
-    case 'pay-early':   return 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30';
-    case 'pay-on-time': return 'bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30';
-    case 'stretch':     return 'bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/30';
-    case 'defer':       return 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30';
+    case 'pay-early':   return 'text-money';
+    case 'pay-on-time': return 'text-ink';
+    case 'stretch':     return 'text-ink';
+    case 'defer':       return 'text-floor';
   }
-}
-
-function SpecterBadge({ score }: { score: number }) {
-  const tone =
-    score >= 0.5 ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30' :
-    score >= 0.3 ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30' :
-    'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30';
-  return (
-    <span className={`inline-block px-2 py-0.5 rounded border text-[11px] tabular-nums ${tone}`}>
-      Specter {score.toFixed(2)}
-    </span>
-  );
 }
