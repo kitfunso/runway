@@ -94,11 +94,11 @@ export function Dashboard({ invoices, vendors, forecast, autoPayRules, escalateR
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inflow, replanned, schedule]);
 
-  async function fetchSchedule(extra: number): Promise<Schedule> {
+  async function fetchSchedule(extra: number, replan = false): Promise<Schedule> {
     const res = await fetch('/api/optimise', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ extraCash: extra }),
+      body: JSON.stringify({ extraCash: extra, replan }),
     });
     if (!res.ok) throw new Error(`/api/optimise returned ${res.status}`);
     const { memoryReasons: reasons = {}, run: _run, heldByMemory: held = [], trusted: trust = [], ...next }: OptimiseResponse = await res.json();
@@ -139,7 +139,7 @@ export function Dashboard({ invoices, vendors, forecast, autoPayRules, escalateR
 
   async function replan(amount: number, before: Schedule) {
     try {
-      const next = await fetchSchedule(amount);
+      const next = await fetchSchedule(amount, true);
       const moved = diffSchedules(before, next);
       const released = moved.filter((c) => c.kind === 'released').length;
       setExtraCash(amount);

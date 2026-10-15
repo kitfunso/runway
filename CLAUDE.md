@@ -25,7 +25,7 @@ See `docs/ARCHITECTURE.md`. Stack: Next.js 15 App Router + Tailwind + shadcn/ui,
 - **No em dashes in UI strings or commit messages.** Use hyphens, colons, or commas. Why: project-wide rule.
 - **No `any`.** Use `unknown` + a Zod parse, or define the type. Why: bug magnets in 4.5h.
 - **Components are dumb.** Fetch in `app/page.tsx` or a top-level container; pass props down. No `useEffect` fetches inside leaf cards.
-- **Tailwind utility classes only.** No CSS modules, no `@apply` blocks. shadcn defaults are good enough.
+- **Tailwind utility classes only.** No CSS modules, no `@apply` blocks. Visual design follows `docs/DESIGN.md`.
 
 ## Critical Files
 
@@ -41,7 +41,7 @@ Read before editing in their area:
 
 - **Secrets:** `.env.local` only. Never log them. Never echo them. Never commit them. Pre-commit grep for `sk-`, `SPECTER_API_KEY=`, `OPENAI_API_KEY=` before pushing.
 - **External calls:** Specter and OpenAI are the only outbound. Both are wrapped (`lib/specter.ts`, `lib/llm.ts`) with timeouts and a deterministic stub for offline / demo-replay mode.
-- **No real money.** `/api/execute` writes a JSON run log. Never integrate Stripe / Plaid / bank rails in this build.
+- **Stripe test mode only.** Runway (Oct 2026) pays through Stripe test-mode payouts from `/api/execute` (transfers only for a vendor with a `stripeAccountId`); `lib/stripe.ts` refuses any key that is not `sk_test_` or `rk_test_`. Never Plaid or other bank rails, never live keys.
 - **Demo replay mode.** A `DEMO_REPLAY=1` env var swaps live Specter + OpenAI calls for cached fixtures so the demo cannot fail on a flaky network.
 
 ## Common Mistakes to Avoid
