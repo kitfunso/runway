@@ -18,6 +18,7 @@ export type Vendor = {
   id: string;
   name: string;
   specterId?: string;
+  stripeAccountId?: string;   // Stripe Connect test account (acct_...), filled by scripts/stripe-setup.ts
   paymentHistory: 'reliable' | 'late' | 'inconsistent' | 'new';
   strategicTier: 1 | 2 | 3;   // 1 = critical, 3 = commodity
 };
