@@ -26,7 +26,8 @@ export function InflowCard({ inflow, started, replanSummary, customerName }: Pro
   const waiting = started && inflow?.configured === true && !inflow.paid;
   return (
     <section
-      className={`relative rounded-b-[6px] border border-t-2 border-dashed border-rule bg-sheet p-6 ${waiting ? 'animate-stub-wait' : ''}`}
+      className={`relative rounded-b-[6px] border border-t-2 border-rule bg-sheet p-6 ${waiting ? 'animate-stub-wait' : ''}`}
+      style={{ borderTopStyle: 'dashed' }}
     >
       <div className="flex items-baseline justify-between gap-3">
         <h2 className={LABEL}>Receivable</h2>

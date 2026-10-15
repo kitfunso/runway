@@ -83,7 +83,7 @@ export function CalendarView({ schedule, invoices, vendors, changes, transfers, 
         </div>
         <span className="font-mono text-[12px] text-ink-2">{schedule.scheduleId.slice(0, 8)}</span>
       </div>
-      <div className="max-h-[560px] overflow-auto border-t border-rule">
+      <div className="max-h-[880px] overflow-auto border-t border-rule">
         <table className="w-full min-w-[760px] border-collapse text-[13px]">
           <thead>
             <tr>

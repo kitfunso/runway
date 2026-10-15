@@ -294,7 +294,7 @@ function InvoiceCard({ escalation, invoice, vendor, distressScore, originalDistr
   const reasons = plain(escalation.reasonForEscalation).split(';').map((r) => r.trim()).filter(Boolean);
 
   return (
-    <article className={`${PANEL} animate-row-in space-y-3 p-4 transition-colors duration-300 ${alertActive || distressScore >= 0.5 ? 'border-floor' : ''}`}>
+    <article className={`animate-row-in space-y-3 rounded-[6px] border bg-sheet p-4 transition-colors duration-300 ${alertActive || distressScore >= 0.5 ? 'border-floor' : 'border-rule'}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="truncate text-sm font-medium">{vendor.name}</div>
