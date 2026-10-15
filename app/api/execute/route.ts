@@ -1,4 +1,4 @@
-// POST /api/execute — stateless. Paid entries with a Stripe rail (vendor.stripeAccountId
+// POST /api/execute - stateless. Paid entries with a Stripe rail (vendor.stripeAccountId
 // + test key) become test-mode transfers, each preceded by a hash-chained audit row.
 // Run log goes to runs/<scheduleId>.executed.json; no server-side state otherwise.
 

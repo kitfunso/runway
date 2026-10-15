@@ -1,4 +1,4 @@
-// GET /api/inflow — polls the demo customer invoice (data/demo-stripe.json) in Stripe test mode.
+// GET /api/inflow - polls the demo customer invoice (data/demo-stripe.json) in Stripe test mode.
 // The first poll that sees it paid writes one "inflow" audit row, guarded by a marker file.
 
 import { NextResponse } from 'next/server';
