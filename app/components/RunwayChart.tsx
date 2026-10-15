@@ -149,6 +149,7 @@ function RunwayChart({ runway, floor, inflowLabel, extraCash }: ChartProps) {
   const xTicks: number[] = [];
   for (let d = 0; d <= HORIZON; d += every) xTicks.push(d);
   const last = runway.cash[HORIZON]!;
+  const tailTop = Math.max(...runway.cash.slice(HORIZON - 10));
 
   return (
     <div ref={ref} className="mt-6 w-full">
@@ -176,7 +177,7 @@ function RunwayChart({ runway, floor, inflowLabel, extraCash }: ChartProps) {
         <text x={M.l + plotW} y={y(floor) - 6} textAnchor="end" fontSize="11" fill="var(--color-floor)" className="font-sans">
           Floor {gbp(floor)}
         </text>
-        <text x={M.l + plotW} y={y(last) - 8} textAnchor="end" fontSize="12" fill="var(--color-ink)" className="font-sans">
+        <text x={M.l + plotW} y={y(tailTop) - 10} textAnchor="end" fontSize="12" fill="var(--color-ink)" className="font-sans">
           Projected cash {gbp(last)}
         </text>
 
