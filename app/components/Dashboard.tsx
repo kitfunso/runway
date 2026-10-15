@@ -4,7 +4,7 @@
 // dispatches API calls. Renders the Calendar, SavingsCounter, PolicyPanel,
 // EscalationPanel.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Invoice, Vendor, Forecast, Schedule } from '@/lib/types';
 import type { PolicyRule } from '@/lib/policy';
 import { CalendarView } from './CalendarView';
@@ -12,6 +12,8 @@ import { SavingsCounter } from './SavingsCounter';
 import { PolicyPanel } from './PolicyPanel';
 import { EscalationPanel } from './EscalationPanel';
 import { SetupBand } from './SetupBand';
+import { InflowCard, type InflowState } from './InflowCard';
+import { diffSchedules, type ReplanChange } from '@/lib/replan';
 import { Button } from '@/components/ui/button';
 
 type Props = {
@@ -22,6 +24,10 @@ type Props = {
   escalateRules: readonly PolicyRule[];
 };
 
+function gbp(n: number): string {
+  return `£${n.toLocaleString('en-GB', { maximumFractionDigits: 0 })}`;
+}
+
 export function Dashboard({ invoices, vendors, forecast, autoPayRules, escalateRules }: Props) {
   const [schedule, setSchedule] = useState<Schedule | null>(null);
   const [optimising, setOptimising] = useState(false);
@@ -29,16 +35,76 @@ export function Dashboard({ invoices, vendors, forecast, autoPayRules, escalateR
   const [executeResult, setExecuteResult] = useState<{ executed: number; approved: number; deferred: number; rejected: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [decisions, setDecisions] = useState<{ invoiceId: string; verdict: 'approve' | 'defer' | 'reject' }[]>([]);
+  const [inflow, setInflow] = useState<InflowState | null>(null);
+  const [extraCash, setExtraCash] = useState(0);
+  const [replanned, setReplanned] = useState(false);
+  const [changes, setChanges] = useState<ReplanChange[]>([]);
+  const [replanSummary, setReplanSummary] = useState<string | null>(null);
+  const hasSchedule = schedule !== null;
+  const inflowPaid = inflow?.paid === true;
+
+  // Poll the open receivable every 3s once a schedule exists; stop when paid.
+  useEffect(() => {
+    if (!hasSchedule || inflowPaid) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const res = await fetch('/api/inflow', { cache: 'no-store' });
+        if (!res.ok) throw new Error(`/api/inflow returned ${res.status}`);
+        const data: InflowState = await res.json();
+        if (!cancelled) setInflow(data);
+      } catch {
+        if (!cancelled) setInflow(null);
+      }
+    };
+    void poll();
+    const id = setInterval(poll, 3000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [hasSchedule, inflowPaid]);
+
+  // First time the invoice shows paid: add it to opening cash and re-plan.
+  useEffect(() => {
+    if (!inflow?.paid || replanned || !schedule) return;
+    setReplanned(true);
+    void replan(inflow.amount, schedule);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inflow, replanned, schedule]);
+
+  async function fetchSchedule(extra: number): Promise<Schedule> {
+    const res = await fetch('/api/optimise', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ extraCash: extra }),
+    });
+    if (!res.ok) throw new Error(`/api/optimise returned ${res.status}`);
+    return res.json();
+  }
+
+  async function replan(amount: number, before: Schedule) {
+    try {
+      const next = await fetchSchedule(amount);
+      const moved = diffSchedules(before, next);
+      const released = moved.filter((c) => c.kind === 'released').length;
+      setExtraCash(amount);
+      setChanges(moved);
+      setReplanSummary(
+        `Re-planned with +${gbp(amount)} cash: savings ${gbp(before.totalSaving)} -> ${gbp(next.totalSaving)}, ` +
+        `${moved.length} payments moved, ${released} released from escalations`,
+      );
+      setSchedule(next);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
 
   async function runOptimise() {
     setOptimising(true);
     setError(null);
     setExecuteResult(null);
     try {
-      const res = await fetch('/api/optimise', { method: 'POST' });
-      if (!res.ok) throw new Error(`/api/optimise returned ${res.status}`);
-      const data: Schedule = await res.json();
-      setSchedule(data);
+      setSchedule(await fetchSchedule(extraCash));
+      setChanges([]);
+      setReplanSummary(null);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -68,6 +134,10 @@ export function Dashboard({ invoices, vendors, forecast, autoPayRules, escalateR
       setExecuting(false);
     }
   }
+
+  const liveForecast: Forecast = extraCash > 0
+    ? { ...forecast, openingCash: forecast.openingCash + extraCash }
+    : forecast;
 
   // Demo flow step inferred from state: 1 Optimise -> 2 Investigate -> 3 Specter -> 4 Execute
   const currentStep = !schedule ? 1
@@ -108,7 +178,10 @@ export function Dashboard({ invoices, vendors, forecast, autoPayRules, escalateR
 
       <DemoStepper current={currentStep} />
 
-      <SetupBand invoices={invoices} forecast={forecast} />
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-6 items-start">
+        <SetupBand invoices={invoices} forecast={liveForecast} />
+        <InflowCard inflow={inflow} started={hasSchedule} replanSummary={replanSummary} />
+      </div>
 
       <SavingsCounter invoices={invoices} schedule={schedule} executeResult={executeResult} />
 
@@ -124,12 +197,14 @@ export function Dashboard({ invoices, vendors, forecast, autoPayRules, escalateR
             schedule={schedule}
             invoices={invoices}
             vendors={vendors}
-            forecast={forecast}
+            forecast={liveForecast}
+            changes={changes}
           />
           <EscalationPanel
             schedule={schedule}
             invoices={invoices}
             vendors={vendors}
+            releasedIds={changes.filter((c) => c.kind === 'released').map((c) => c.invoiceId)}
             onScheduleChange={setSchedule}
             onDecisionRecorded={(d) => setDecisions((arr) => [...arr, d])}
           />

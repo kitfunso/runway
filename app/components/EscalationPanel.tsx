@@ -10,6 +10,7 @@ type Props = {
   schedule: Schedule | null;
   invoices: Invoice[];
   vendors: Vendor[];
+  releasedIds: string[];
   onScheduleChange: (s: Schedule) => void;
   onDecisionRecorded?: (d: { invoiceId: string; verdict: 'approve' | 'defer' | 'reject' }) => void;
 };
@@ -53,23 +54,43 @@ function gbp(n: number): string {
   return `£${n.toLocaleString('en-GB', { maximumFractionDigits: 0 })}`;
 }
 
-export function EscalationPanel({ schedule, invoices, vendors, onDecisionRecorded }: Props) {
+export function EscalationPanel({ schedule, invoices, vendors, releasedIds, onDecisionRecorded }: Props) {
   const [cardStates, setCardStates] = useState<Record<string, CardState>>({});
 
   if (!schedule) return null;
-  if (schedule.escalations.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">Escalations</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">No escalations - all invoices auto-paid.</CardContent>
-      </Card>
-    );
-  }
 
   const invById = new Map(invoices.map((i) => [i.id, i]));
   const vendById = new Map(vendors.map((v) => [v.id, v]));
+
+  const released = releasedIds.map((id) => {
+    const inv = invById.get(id);
+    const entry = schedule.entries.find((e) => e.invoiceId === id);
+    if (!inv || !entry) return null;
+    return (
+      <Card key={`released-${id}`} className="border">
+        <CardContent className="py-3 text-sm flex items-center justify-between gap-3 flex-wrap">
+          <span>
+            <span className="font-mono">{id}</span> · {vendById.get(inv.vendorId)?.name ?? inv.vendorId} · {gbp(inv.amount)} · now pays {entry.payDate}
+          </span>
+          <span className="text-green-700 dark:text-green-400 font-medium">Released by inflow</span>
+        </CardContent>
+      </Card>
+    );
+  });
+
+  if (schedule.escalations.length === 0) {
+    return (
+      <div className="space-y-3">
+        {released}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">Escalations</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">No escalations - all invoices auto-paid.</CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   function getState(invoiceId: string): CardState {
     return cardStates[invoiceId] ?? freshState();
@@ -167,6 +188,7 @@ export function EscalationPanel({ schedule, invoices, vendors, onDecisionRecorde
 
   return (
     <section className="space-y-3">
+      {released}
       <div className="flex items-baseline justify-between gap-3 flex-wrap">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Escalations ({schedule.escalations.length})

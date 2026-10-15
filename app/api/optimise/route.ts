@@ -2,7 +2,8 @@
 // full optimiser, mint scheduleId, persist runs/<id>.pending.json, return
 // the full Schedule with breachesAvoidedVsBaseline filled in.
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { loadAll } from '@/lib/data';
 import { getDistressScore } from '@/lib/specter';
 import { optimise, simulate } from '@/lib/optimiser';
@@ -12,9 +13,21 @@ import type { DistressMap, Invoice } from '@/lib/types';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function POST() {
+// extraCash is a customer payment that landed after the forecast was cut.
+const Body = z.object({ extraCash: z.number().min(0).max(10_000_000).default(0) });
+
+export async function POST(req: NextRequest) {
+  let extraCash: number;
   try {
-    const { invoices, vendors, forecast } = loadAll();
+    const raw = await req.text();
+    extraCash = Body.parse(raw ? JSON.parse(raw) : {}).extraCash;
+  } catch (err) {
+    return NextResponse.json({ error: 'invalid body', detail: (err as Error).message }, { status: 400 });
+  }
+
+  try {
+    const { invoices, vendors, forecast: base } = loadAll();
+    const forecast = { ...base, openingCash: base.openingCash + extraCash };
 
     // Pre-fetch distress scores for every vendor in parallel.
     const distressScores: DistressMap = {};

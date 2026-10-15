@@ -4,13 +4,14 @@
 // fallback, per CLAUDE.md "spending >30 min on calendar visuals" guard).
 
 import type { Schedule, Invoice, Vendor, Forecast } from '@/lib/types';
-import { Badge } from '@/components/ui/badge';
+import type { ReplanChange } from '@/lib/replan';
 
 type Props = {
   schedule: Schedule | null;
   invoices: Invoice[];
   vendors: Vendor[];
   forecast: Forecast;
+  changes: ReplanChange[];
 };
 
 function gbp(n: number): string {
@@ -31,7 +32,7 @@ const REASON_LABEL: Record<string, string> = {
   'flagged':       'flagged',
 };
 
-export function CalendarView({ schedule, invoices, vendors }: Props) {
+export function CalendarView({ schedule, invoices, vendors, changes }: Props) {
   if (!schedule) {
     return (
       <div className="rounded-lg border bg-card p-4">
@@ -43,6 +44,7 @@ export function CalendarView({ schedule, invoices, vendors }: Props) {
 
   const invById = new Map(invoices.map((i) => [i.id, i]));
   const vendById = new Map(vendors.map((v) => [v.id, v]));
+  const changeById = new Map(changes.map((c) => [c.invoiceId, c]));
   const sorted = [...schedule.entries].sort((a, b) => a.payDate.localeCompare(b.payDate));
 
   return (
@@ -82,6 +84,11 @@ export function CalendarView({ schedule, invoices, vendors }: Props) {
                     <span className={`inline-block px-2 py-0.5 rounded border text-[11px] ${REASON_TONE[e.reason] ?? ''}`}>
                       {REASON_LABEL[e.reason] ?? e.reason}
                     </span>
+                    {changeById.has(e.invoiceId) && (
+                      <span className="ml-1 text-[11px] text-muted-foreground">
+                        {changeById.get(e.invoiceId)?.kind === 'released' ? 'Released by inflow' : 'Moved by inflow'}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-2">
                     <SpecterBadge score={e.distressScore} />
