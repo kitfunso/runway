@@ -13,8 +13,17 @@ import { PolicyPanel } from './PolicyPanel';
 import { EscalationPanel } from './EscalationPanel';
 import { SetupBand } from './SetupBand';
 import { InflowCard, type InflowState } from './InflowCard';
+import { AuditBand, type Transfer, type VerifyResult } from './AuditBand';
 import { diffSchedules, type ReplanChange } from '@/lib/replan';
 import { Button } from '@/components/ui/button';
+
+type ExecuteResult = {
+  executed: number;
+  approved: number;
+  deferred: number;
+  rejected: number;
+  transfers?: Transfer[];
+};
 
 type Props = {
   invoices: Invoice[];
@@ -32,7 +41,11 @@ export function Dashboard({ invoices, vendors, forecast, autoPayRules, escalateR
   const [schedule, setSchedule] = useState<Schedule | null>(null);
   const [optimising, setOptimising] = useState(false);
   const [executing, setExecuting] = useState(false);
-  const [executeResult, setExecuteResult] = useState<{ executed: number; approved: number; deferred: number; rejected: number } | null>(null);
+  const [executeResult, setExecuteResult] = useState<ExecuteResult | null>(null);
+  const [audit, setAudit] = useState<VerifyResult | null>(null);
+  const [verified, setVerified] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [auditError, setAuditError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [decisions, setDecisions] = useState<{ invoiceId: string; verdict: 'approve' | 'defer' | 'reject' }[]>([]);
   const [inflow, setInflow] = useState<InflowState | null>(null);
@@ -101,6 +114,9 @@ export function Dashboard({ invoices, vendors, forecast, autoPayRules, escalateR
     setOptimising(true);
     setError(null);
     setExecuteResult(null);
+    setAudit(null);
+    setVerified(false);
+    setAuditError(null);
     try {
       setSchedule(await fetchSchedule(extraCash));
       setChanges([]);
@@ -109,6 +125,23 @@ export function Dashboard({ invoices, vendors, forecast, autoPayRules, escalateR
       setError((e as Error).message);
     } finally {
       setOptimising(false);
+    }
+  }
+
+  async function loadAudit(showResult: boolean) {
+    setVerifying(true);
+    setAuditError(null);
+    try {
+      const res = await fetch('/api/verify', { cache: 'no-store' });
+      if (!res.ok) throw new Error(`/api/verify returned ${res.status}`);
+      const data: VerifyResult = await res.json();
+      setAudit(data);
+      setVerified(showResult);
+    } catch {
+      setAudit(null);
+      setAuditError('Audit verify not configured');
+    } finally {
+      setVerifying(false);
     }
   }
 
@@ -123,11 +156,17 @@ export function Dashboard({ invoices, vendors, forecast, autoPayRules, escalateR
         body: JSON.stringify({
           scheduleId: schedule.scheduleId,
           autoPayCount,
+          autoPay: schedule.entries
+            .filter((e) => e.reason !== 'flagged')
+            .map((e) => ({ invoiceId: e.invoiceId, rule: e.reason })),
           decisions,
         }),
       });
-      const data = await res.json();
+      if (!res.ok) throw new Error(`/api/execute returned ${res.status}`);
+      const data: ExecuteResult = await res.json();
       setExecuteResult(data);
+      setVerified(false);
+      await loadAudit(false);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -184,6 +223,17 @@ export function Dashboard({ invoices, vendors, forecast, autoPayRules, escalateR
       </div>
 
       <SavingsCounter invoices={invoices} schedule={schedule} executeResult={executeResult} />
+
+      {executeResult && (
+        <AuditBand
+          transfers={executeResult.transfers ?? []}
+          audit={audit}
+          verified={verified}
+          verifying={verifying}
+          auditError={auditError}
+          onVerify={() => void loadAudit(true)}
+        />
+      )}
 
       {error && (
         <div className="rounded border border-destructive bg-destructive/10 p-3 text-sm text-destructive">
