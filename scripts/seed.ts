@@ -1,4 +1,4 @@
-// Deterministic seed for Floater. Produces:
+// Deterministic seed for Runway. Produces:
 //   data/vendors.json    — 12 vendors (10 reliable, V-009 distressed in Specter, V-010 NEW)
 //   data/invoices.json   - 41 invoices, hand-tuned: the escalation set under DEMO_REPLAY=1
 //                          is the 3 below + INV-RELEASE-01, which £6k extra opening

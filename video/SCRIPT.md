@@ -18,6 +18,6 @@
 
 ---
 Where the numbers come from:
-- **37%:** "2/10 net 30" means 2% off for paying 20 days early, and 2/98 × 365/20 = 37% a year. Floater's PRD uses the same figure.
+- **37%:** "2/10 net 30" means 2% off for paying 20 days early, and 2/98 × 365/20 = 37% a year. `docs/PRD.md` uses the same figure.
 - **50,000 firms:** the FSB's "Time to Act" report.
 - **41 bills, £3,529 saved, 4 asked, 38 payouts, 0 asked in run 2:** all from the recorded take.

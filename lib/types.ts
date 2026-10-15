@@ -1,4 +1,4 @@
-// Shared types for Floater. JSON files in data/ conform to these shapes.
+// Shared types for Runway. JSON files in data/ conform to these shapes.
 
 export type Invoice = {
   id: string;              // INV-0001

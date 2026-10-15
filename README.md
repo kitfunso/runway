@@ -1,10 +1,10 @@
 # Runway
 
-> Floater scheduled the payments. Runway pays them: real Stripe test-mode payouts under the same policy, a hash-chained audit trail, live cash re-planning when a customer pays, and hippo memory of the finance manager's decisions.
+> Runway plans every supplier payment and pays it: real Stripe test-mode payouts under a written cash policy, a hash-chained audit trail, live cash re-planning when a customer pays, and hippo memory of the finance manager's decisions.
 
-## Built on Floater
+## What was built tonight
 
-Built on Floater, our open-source April 2026 build (https://github.com/kitfunso/Floater), used as the starting template as the hackathon rules allow. Everything in the list below was built on the night of 15 October 2026:
+Runway starts from our own open-source April 2026 prototype, used as the starting template as the hackathon rules allow; the git history shows where it ends. Everything in the list below was built on the night of 15 October 2026:
 
 - Real money movement in Stripe test mode: `/api/execute` sends a payout per paid invoice from the Stripe balance (a Connect transfer instead when the vendor has a `stripeAccountId`) and returns the `transfers` list (payout id, or the reason none was sent). Connect accounts were not used: the sandbox's Connect platform profile is shared with live mode, and onboarding test sellers needed live-mode changes.
 - A hash-chained audit trail (`lib/audit.ts`, `runs/audit.jsonl`) with `/api/verify` to prove the chain is intact.
@@ -12,7 +12,7 @@ Built on Floater, our open-source April 2026 build (https://github.com/kitfunso/
 - Memory on hippo (`lib/memory.ts`) across payment runs: `/api/optimise` holds a rejected vendor and a deferred invoice, trusts an approved vendor (history and distress rules waived, amount and floor rules kept), and logs each run to `/api/learning` for the Learning strip.
 - A Why button on every schedule row and escalation card (`/api/why`).
 
-Everything else (optimiser, policy, sub-agent fan-out, calendar, escalation panel) is Floater.
+Everything else (optimiser, policy, sub-agent fan-out, calendar, escalation panel) comes from the April prototype.
 
 ## What it does
 
@@ -130,8 +130,8 @@ The optimiser test asserts the exact escalation set `[INV-FLOOR-BREACH, INV-LARG
 
 ## Deploy
 
-Runway needs a Node host: memory shells out to the `hippo` CLI and the audit log writes files, neither of which works on Cloudflare Workers. The Cloudflare scripts (`npm run deploy:cf`) and the Vercel script (`npm run deploy:vercel`) are Floater's and were not re-tested for Runway; the live Floater demo at https://floater.skfsk27.workers.dev is the original Floater build, not Runway.
+Runway needs a Node host: memory shells out to the `hippo` CLI and the audit log writes files, neither of which works on Cloudflare Workers. The Cloudflare scripts (`npm run deploy:cf`) and the Vercel script (`npm run deploy:vercel`) come from the April prototype and were not re-tested for Runway.
 
 ## Credits
 
-Floater plan and docs: `docs/PRD.md`, `docs/ARCHITECTURE.md`, `docs/plans/2026-04-30-phase-1.md`. Track: Money Movement.
+April prototype plan and docs: `docs/PRD.md`, `docs/ARCHITECTURE.md`, `docs/plans/2026-04-30-phase-1.md`. Track: Agents that spend.

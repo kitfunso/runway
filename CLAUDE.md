@@ -1,4 +1,4 @@
-# CLAUDE.md - Working Capital Optimiser (Floater)
+# CLAUDE.md - Working Capital Optimiser (Runway)
 
 ## Project Overview
 Hackathon AP scheduling agent (Cursor x Briefcase London 2026, Money Movement track, 4.5h build). Decides per invoice: pay early / on time / stretch. Auto-executes clean ones, escalates wobbly ones via Cursor SDK sub-agents (vendor-health, cash-impact, discount-NPV). Specter is a structural input to the pay-early decision.
