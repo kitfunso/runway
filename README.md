@@ -1,26 +1,74 @@
-# Floater - Working Capital Optimiser
+# Runway
 
-> AP scheduling agent that auto-pays clean invoices, escalates the wobbly ones, and turns 2/10 net 30 into real £ saved with cash-floor and counterparty guardrails.
+> Floater scheduled the payments. Runway pays them: real Stripe transfers under the same policy, a hash-chained audit trail, live cash re-planning when a customer pays, and hippo memory of the finance manager's decisions.
 
-Built for Cursor x Briefcase London 2026 (Money Movement track, 4.5h build window).
+## Built on Floater
+
+Built on Floater, our open-source April 2026 build (https://github.com/kitfunso/Floater), used as the starting template as the hackathon rules allow. Everything in the list below was built on the night of 15 October 2026:
+
+- Real money movement in Stripe test mode: `/api/execute` sends a Transfer per paid invoice and returns the `transfers` list (transfer id, or the reason none was sent).
+- A hash-chained audit trail (`lib/audit.ts`, `runs/audit.jsonl`) with `/api/verify` to prove the chain is intact.
+- `/api/inflow` and the QR card: a customer pays an open £6,000 invoice from their phone, the dashboard sees it within 3 seconds, adds it to opening cash and re-plans (`extraCash` on `/api/optimise`).
+- Memory on hippo (`lib/memory.ts`) with a rejected/deferred-vendor gate in `/api/optimise`.
+- A Why button on every schedule row and escalation card (`/api/why`).
+
+Everything else (optimiser, policy, sub-agent fan-out, calendar, escalation panel) is Floater.
 
 ## What it does
 
 - Loads 40 mock invoices, 12 vendors, a 60-day cash forecast.
-- Pre-fetches Specter distress scores for every vendor in parallel.
-- Runs a greedy optimiser twice (naive baseline + full policy) and diffs the breach counts so you see the agent's value as `breachesAvoidedVsBaseline`.
-- Auto-pays everything that satisfies all 5 policy rules (small + reliable + low distress + cash-safe + within 14d stretch window).
-- Flags everything else for sub-agent investigation.
-- For each flagged invoice, fans out **3 sub-agents in parallel via @cursor/sdk** (vendor-health, cash-impact, discount-NPV). The UI shows the parallelism timing strip on every card so judges see structural concurrency, not a sequential pretender.
-- Single human "Approve / Defer / Reject" decision per escalation; everything else auto-executes.
+- Gets a vendor risk score for every vendor in parallel. The scores are fixtures shaped like a Specter distress signal (`lib/specter.ts`); no live Specter call is made in the demo, and some UI labels still say Specter.
+- Runs a greedy optimiser twice (naive baseline and full policy) and diffs the breach counts, shown as `breachesAvoidedVsBaseline`.
+- Auto-pays everything that satisfies the policy below; flags the rest for a human.
+- For each flagged invoice, three sub-agents (vendor-health, cash-impact, discount-npv) run in parallel and the UI shows the timing strip. Under `DEMO_REPLAY=1` they return fixture verdicts; the live `@cursor/sdk` path exists in `lib/cursor.ts` but is not on the demo path.
+- One human Approve / Defer / Reject per escalation. Everything else auto-executes when you click Execute.
+- Executing sends Stripe test-mode Transfers to vendors that have a connected test account (three of the twelve after setup). Any other vendor shows "no rail" in the transfer list; nothing is sent.
 
-## Demo flow
+## Policy
 
-1. Click **Optimise** -> calendar populates, savings counter ticks to £3,529, 3 escalations surface (`INV-LARGE-NEW`, `INV-SPECTER-DISTRESSED`, `INV-FLOOR-BREACH`).
-2. Click **Investigate** on any flagged card -> 3 sub-agents return verdicts in <200ms wallclock with non-zero parallel spread.
-3. Click **Trigger Specter alert** -> `INV-FLOOR-BREACH` flips red, vendor-health verdict moves to `defer`, narration switches to the alert fixture.
-4. Approve / Defer / Reject the cards.
-5. Click **Execute schedule** -> commits the auto-pay queue and approved escalations to a run log.
+Auto-pay only when all of these hold (source: `lib/policy.ts`, rendered in the Policy panel):
+
+1. Amount under £5,000.
+2. Vendor has at least 3 prior on-time payments.
+3. Vendor risk score under 0.3.
+4. The cash floor holds across the full 60-day horizon.
+5. Payable within 14 days of the due date.
+
+Otherwise the invoice escalates: amount of £5,000 or more, a new or inconsistent vendor, risk score of 0.3 or more, pay-on-due would breach the floor, or the sub-agents disagree. Sub-agents never gate auto-pay. A risk score above 0.5 also pushes the pay date out (capped at 14 days past due).
+
+Memory adds one input: if the finance manager rejected or deferred any invoice from a vendor before, that vendor's risk score is raised to 0.95 on the next Optimise and every invoice from them escalates, with "finance manager rejected/deferred before" on the card.
+
+## Memory
+
+Memory runs on hippo (https://github.com/kitfunso/hippo, npm `hippo-memory`), our open-source memory layer for agents: the finance manager rejects a vendor once and Runway never auto-pays them again.
+
+`lib/memory.ts` calls the `hippo` CLI against an isolated store in `runs/hippo-home` (it never touches any other hippo store). If `hippo` is not installed or fails, it falls back to `runs/memory.jsonl`, so the gate still works without hippo. Check which path ran with `npx tsx scripts/memory-smoke.ts`; it prints `hippo` or `file`.
+
+## Setup
+
+```bash
+npm install
+npm i -g hippo-memory            # optional: memory falls back to a JSON file without it
+
+cp .env.local.example .env.local
+# Set STRIPE_SECRET_KEY to a TEST key (sk_test_ or rk_test_). Live keys are rejected.
+# Keep DEMO_REPLAY=1 for the demo path.
+
+npx tsx scripts/stripe-setup.ts  # once: test accounts for three vendors, funds the test
+                                 # balance, creates the open Acme Ltd invoice
+                                 # (writes data/vendors.json and data/demo-stripe.json)
+npm run dev                      # http://localhost:3000
+```
+
+Without `STRIPE_SECRET_KEY` the app still runs: the inflow card says "Inflow not configured" and Execute lists every payment as not sent.
+
+## Demo steps
+
+1. Click **Optimise**. The schedule fills in, savings tick up, and three invoices escalate (`INV-LARGE-NEW`, `INV-SPECTER-DISTRESSED`, `INV-FLOOR-BREACH`). The inflow card shows the open Acme Ltd receivable with a QR code.
+2. Pay the invoice from the QR code or link (Stripe test card `4242 4242 4242 4242`). Within 3 seconds the card turns to "Paid £6,000", opening cash rises and the schedule re-plans. With the seeded data and £6,000, savings move from £3,529 to £3,918 as two payments move up to take early-pay discounts and one moves back; moved rows are labelled "Moved by inflow". An escalation that cash alone unblocks would be labelled "Released by inflow" (none is with this seed, because all three fail rules that cash cannot fix). Nothing executes on its own.
+3. Click **Investigate** on `INV-FLOOR-BREACH`, then **Reject** it. The decision is written to memory.
+4. Click **Optimise** again. Other invoices from the rejected vendor (Acme Office Supplies) now escalate with the memory reason. Click **Why?** on a row or card to read what memory recorded.
+5. Click **Execute schedule**. The audit band lists the Stripe transfers (each id links to the Stripe test dashboard) and the chain length and last hash. Click **Verify**: "Chain intact, N rows".
 
 ## Architecture
 
@@ -28,124 +76,62 @@ Built for Cursor x Briefcase London 2026 (Money Movement track, 4.5h build windo
 [data/*.json]
       |
       v
-[POST /api/optimise]
-      |-- pre-fetch Specter for every vendor (Promise.all)
+[POST /api/optimise { extraCash? }]
+      |-- recall() memory, raise risk score of previously rejected/deferred vendors
+      |-- vendor risk scores for every vendor (Promise.all)
       |-- run optimiser twice (forceNaive baseline + full)
-      |-- mint scheduleId, write runs/<id>.pending.json
-      |-- return Schedule { entries, escalations, totalSaving, breachesAvoidedVsBaseline }
+      |-- return Schedule + memoryReasons
 
-[POST /api/investigate { scheduleId, invoiceId, forceDistress? }]
-      |-- read runs/<id>.pending.json
-      |-- fanOut(ALL_AGENTS) via Promise.all
-      |-- return { verdicts, parallelism, narration }
-
-[POST /api/decide]    -> append runs/<id>.decisions.jsonl
-[POST /api/execute]   -> write runs/<id>.executed.json (idempotent)
+[GET  /api/inflow]    -> open customer invoice paid? (Stripe test mode, polled every 3s)
+[POST /api/investigate, /api/agent/<name>] -> sub-agent verdicts
+[POST /api/decide]    -> remember() the decision
+[POST /api/execute]   -> audit row + Stripe Transfer per paid invoice, returns transfers
+[GET  /api/verify]    -> walk runs/audit.jsonl, check the hash chain
+[POST /api/why]       -> recall() what memory knows about an invoice
 ```
 
-Stack: Next.js 15 App Router, React 19, Tailwind 4, shadcn primitives, `@cursor/sdk@1.0.11`, `openai`, `zod`, JSON files (no DB).
+State stays client-side (the schedule and decisions travel in request bodies). The server writes only `runs/` files: `audit.jsonl`, `memory.jsonl`, `hippo-home/`, run logs.
+
+Stack: Next.js 15 App Router, React 19, Tailwind 4, shadcn primitives, `@cursor/sdk`, `openai`, `stripe`, `zod`, JSON files (no DB).
 
 ## Non-negotiables (also in CLAUDE.md)
 
 1. `.env.local` is gitignored before any key is written.
 2. Never breach the cash floor, including under deferred payments. `MAX_STRETCH_DAYS = 14`.
-3. HITL escalation is **earned, not blanket**. Sub-agents only run on flagged invoices via `/api/investigate`.
-4. Sub-agents must fan out in parallel via `Promise.all`. Sequential calls don't earn the rubric bonus.
-5. Specter is a structural decision input, not decoration. `distressScore` gates the pay-early branch in `lib/optimiser.ts`.
-6. Deterministic demo. `DEMO_REPLAY=1` swaps Specter + OpenAI calls for fixtures. Live LLM is never on the demo critical path.
-
-## Setup
-
-```bash
-# 1. Clone + install
-git clone https://github.com/kitfunso/Floater.git
-cd Floater
-npm install
-
-# 2. Configure env
-cp .env.local.example .env.local
-# Fill in SPECTER_API_KEY, CURSOR_API_KEY, OPENAI_API_KEY (last is optional)
-# Keep DEMO_REPLAY=1 for the demo path
-
-# 3. Generate seed (already committed; only re-run if you change scripts/seed.ts)
-npx tsx scripts/seed.ts
-
-# 4. Boot dev server
-npm run dev
-# -> http://localhost:3000
-```
+3. HITL escalation is earned, not blanket. Sub-agents only run on flagged invoices.
+4. Sub-agents fan out in parallel with `Promise.all`.
+5. Deterministic demo. `DEMO_REPLAY=1` swaps Specter and OpenAI calls for fixtures.
+6. Stripe test mode only. `lib/stripe.ts` refuses any key that is not `sk_test_` or `rk_test_`.
 
 ## Verify
 
 ```bash
-# Type check + production build
 npm run typecheck
-npm run build
 
-# Run all tests (deterministic under DEMO_REPLAY=1)
-DEMO_REPLAY=1 npx tsx lib/__tests__/policy.test.ts       # 14/14 npv + policy
-DEMO_REPLAY=1 npx tsx lib/__tests__/optimiser.test.ts    # 15/15 optimiser + determinism harness
-DEMO_REPLAY=1 npx tsx lib/__tests__/cursor.test.ts       # 15/15 cursor SDK fanOut
+DEMO_REPLAY=1 npx tsx lib/__tests__/policy.test.ts
+DEMO_REPLAY=1 npx tsx lib/__tests__/optimiser.test.ts
+DEMO_REPLAY=1 npx tsx lib/__tests__/cursor.test.ts
+npx tsx lib/__tests__/audit.test.ts
+npx tsx scripts/memory-smoke.ts   # RUNS_DIR=<scratch dir> keeps the demo store clean
 ```
 
-The optimiser test asserts the **exact** escalation set: `[INV-FLOOR-BREACH, INV-LARGE-NEW, INV-SPECTER-DISTRESSED]`. If seed math drifts, the test fails before the demo.
+The optimiser test asserts the exact escalation set `[INV-FLOOR-BREACH, INV-LARGE-NEW, INV-SPECTER-DISTRESSED]`.
 
 ## Env vars
 
 | Var | Purpose | Notes |
 |-----|---------|-------|
-| `SPECTER_API_KEY` | Specter REST auth | The brief key is **assumed burned post-event**; rotate before any real use |
-| `SPECTER_BASE_URL` | Specter base | Default `https://api.tryspecter.com` |
-| `CURSOR_API_KEY` | @cursor/sdk auth | Required for live sub-agent runs (not the demo path) |
-| `OPENAI_API_KEY` | gpt-5-mini | Optional; only used when `DEMO_REPLAY=0` |
-| `DEMO_REPLAY` | `1` = fixtures, `0` = live | **Set `1` in production deploys** so the demo never depends on a flaky network |
-| `RUNS_DIR` | Override runs/ path | Auto-set to `/tmp/floater-runs` on Vercel |
+| `STRIPE_SECRET_KEY` | Stripe test-mode transfers and the inflow card | Test keys only (`sk_test_` / `rk_test_`) |
+| `DEMO_REPLAY` | `1` = fixtures, `0` = live | Keep `1` for the demo |
+| `RUNS_DIR` | Where audit log, memory and run logs live | Default `./runs` |
+| `SPECTER_API_KEY`, `SPECTER_BASE_URL` | Specter REST | Only used when `DEMO_REPLAY=0` |
+| `CURSOR_API_KEY` | `@cursor/sdk` live sub-agent runs | Not on the demo path |
+| `OPENAI_API_KEY` | Narration | Optional; only when `DEMO_REPLAY=0` |
 
 ## Deploy
 
-**Live demo:** https://floater.skfsk27.workers.dev
+Runway needs a Node host: memory shells out to the `hippo` CLI and the audit log writes files, neither of which works on Cloudflare Workers. The Cloudflare scripts (`npm run deploy:cf`) and the Vercel script (`npm run deploy:vercel`) are Floater's and were not re-tested for Runway; the live Floater demo at https://floater.skfsk27.workers.dev is the original Floater build, not Runway.
 
-Cloudflare Workers via OpenNext:
+## Credits
 
-```bash
-npm run deploy:cf      # build + wrangler deploy in one shot
-npm run preview:cf     # build + wrangler dev (local Worker preview)
-```
-
-The build script (`scripts/build-cf.mjs`) hides `node_modules/@cursor/sdk`
-during the OpenNext + wrangler bundle pass so esbuild doesn't trip on the
-SDK's dynamic `require` patterns or `.d.ts` files. The SDK is only used in
-the live (non-DEMO_REPLAY) path, which Cloudflare Workers can't run anyway,
-so the lazy `loadCursorSdk()` returns null and the demo fixture path takes
-over. The SDK is restored on local dev / Vercel deploys.
-
-API routes are stateless on Cloudflare (Worker instances don't share
-in-memory state). The client holds the `Schedule` from `/api/optimise` and
-passes the per-entry `distressScore` to subsequent `/api/investigate` calls
-plus `autoPayCount + decisions[]` to `/api/execute`.
-
-Vercel (Node.js host - the @cursor/sdk loads natively here so the live path
-actually executes Cursor cloud agents):
-
-```bash
-# 1. One-time interactive auth
-vercel login
-
-# 2. Link + push env + deploy production in one shot
-npm run deploy:vercel
-```
-
-The script reads CURSOR_API_KEY + SPECTER_API_KEY from .env.local and pushes
-them to Vercel production env. DEMO_REPLAY is set to 1 so investigate calls
-return in <100ms instead of 18s; flip to 0 in the Vercel dashboard for live
-SDK proof.
-
-Verified locally with `DEMO_REPLAY=0 CURSOR_API_KEY=... npx tsx spike/sdk-live-test.ts`:
-the SDK loads, Agent.create + send + wait succeed, 3 verdicts come back from
-real Cursor agents.
-
-## Build plan recap
-
-13 steps in `docs/plans/2026-04-30-phase-1.md`. Foundation docs at `docs/PRD.md`, `docs/ARCHITECTURE.md`, `CLAUDE.md`. Reviewed by codex + plan-eng-review before code.
-
-Track: Money Movement.
+Floater plan and docs: `docs/PRD.md`, `docs/ARCHITECTURE.md`, `docs/plans/2026-04-30-phase-1.md`. Track: Money Movement.

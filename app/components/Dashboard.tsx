@@ -202,9 +202,9 @@ export function Dashboard({ invoices, vendors, forecast, autoPayRules, escalateR
     <main className="min-h-screen p-6 max-w-[1400px] mx-auto space-y-6">
       <header className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
-          <div className="size-10 rounded-lg bg-gradient-to-br from-emerald-500 to-sky-500 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-emerald-500/20">F</div>
+          <div className="size-10 rounded-lg bg-gradient-to-br from-emerald-500 to-sky-500 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-emerald-500/20">R</div>
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight">Floater</h1>
+            <h1 className="text-3xl font-semibold tracking-tight">Runway</h1>
             <p className="text-sm text-muted-foreground">
               AP scheduling agent. Auto-pay clean invoices, escalate the wobbly ones.
             </p>
