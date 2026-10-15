@@ -58,7 +58,7 @@ async function payOne(item: PayItem, ctx: PayContext): Promise<TransferResult> {
   const base = { invoiceId: item.invoiceId, amount };
   const vendor = ctx.vendors.get(inv.vendorId);
   const accountId = vendor?.stripeAccountId;
-  if (!accountId || !ctx.stripe) {
+  if (!vendor || !ctx.stripe) {
     return { ...base, transferId: null, reason: ctx.stripeError ?? 'no rail' };
   }
 
@@ -71,13 +71,19 @@ async function payOne(item: PayItem, ctx: PayContext): Promise<TransferResult> {
       rule: item.rule,
       amount,
     });
-    const transfer = await ctx.stripe.transfers.create({
-      amount: Math.round(amount * 100),
-      currency: 'gbp',
-      destination: accountId,
-      description: `${item.invoiceId} ${vendor.name}`,
-      metadata: { invoiceId: item.invoiceId, rule: item.rule, auditHash: row.hash },
-    });
+    const description = `${item.invoiceId} ${vendor.name}`;
+    const metadata = { invoiceId: item.invoiceId, vendor: vendor.name, rule: item.rule, auditHash: row.hash };
+    // A vendor with a connected account is paid by transfer; otherwise the payment leaves the
+    // Stripe balance as a payout to the operating bank account that pays the supplier.
+    const transfer = accountId
+      ? await ctx.stripe.transfers.create({
+          amount: Math.round(amount * 100),
+          currency: 'gbp',
+          destination: accountId,
+          description,
+          metadata,
+        })
+      : await ctx.stripe.payouts.create({ amount: Math.round(amount * 100), currency: 'gbp', description, metadata });
     appendAudit({
       ts: new Date().toISOString(),
       kind: 'transfer',

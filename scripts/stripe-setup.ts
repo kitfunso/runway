@@ -40,27 +40,34 @@ async function fundBalance(stripe: Stripe): Promise<void> {
   console.warn('GBP available balance is still below the funding target; transfers may fail');
 }
 
-function accountParams(vendor: Vendor, recipient: boolean): Stripe.AccountCreateParams {
-  const slug = vendor.id.toLowerCase();
+// Recipient accounts fully prefilled with Stripe's test values, so no hosted onboarding is needed.
+// Needs the platform-profile loss and compliance acknowledgements done once in the Dashboard.
+function accountParams(vendor: Vendor): Stripe.AccountCreateParams {
+  const email = `runway-${vendor.id.toLowerCase()}-${Date.now()}@example.com`;
   return {
-    type: 'custom',
     country: 'GB',
     business_type: 'individual',
-    email: `${slug}@example.com`,
-    // The full-agreement retry also needs card_payments next to transfers.
-    capabilities: recipient
-      ? { transfers: { requested: true } }
-      : { transfers: { requested: true }, card_payments: { requested: true } },
-    business_profile: { name: vendor.name, url: 'https://accessible.stripe.com' },
-    tos_acceptance: {
-      date: Math.floor(Date.now() / 1000),
-      ip: '127.0.0.1',
-      ...(recipient ? { service_agreement: 'recipient' as const } : {}),
+    email,
+    controller: {
+      stripe_dashboard: { type: 'none' },
+      losses: { payments: 'application' },
+      requirement_collection: 'application',
+      fees: { payer: 'application' },
     },
+    capabilities: { transfers: { requested: true } },
+    business_profile: {
+      name: vendor.name,
+      mcc: '5734',
+      url: 'https://accessible.stripe.com',
+      product_description: 'Services invoiced to Runway',
+      support_phone: '+442071234567',
+    },
+    tos_acceptance: { date: Math.floor(Date.now() / 1000), ip: '127.0.0.1', service_agreement: 'recipient' },
     individual: {
       first_name: 'Test',
       last_name: vendor.id.replace('-', ''),
-      email: `${slug}@example.com`,
+      email,
+      phone: '+442071234567',
       dob: { day: 1, month: 1, year: 1901 },
       address: { line1: 'address_full_match', city: 'London', postal_code: 'EC1A 1BB', country: 'GB' },
     },
@@ -76,22 +83,17 @@ function accountParams(vendor: Vendor, recipient: boolean): Stripe.AccountCreate
 }
 
 async function createVendorAccount(stripe: Stripe, vendor: Vendor): Promise<string> {
-  try {
-    return (await stripe.accounts.create(accountParams(vendor, true))).id;
-  } catch (err) {
-    console.warn(`${vendor.id}: recipient agreement rejected (${(err as Error).message}); retrying with full agreement`);
-    return (await stripe.accounts.create(accountParams(vendor, false))).id;
-  }
+  return (await stripe.accounts.create(accountParams(vendor))).id;
 }
 
-async function waitForTransfers(stripe: Stripe, accountId: string): Promise<string> {
-  let status = 'unknown';
-  for (let i = 0; i < 15; i++) {
-    status = (await stripe.accounts.retrieve(accountId)).capabilities?.transfers ?? 'unknown';
-    if (status === 'active') break;
-    await new Promise((r) => setTimeout(r, 2000));
-  }
-  return status;
+async function onboardingLink(stripe: Stripe, accountId: string): Promise<string> {
+  const link = await stripe.accountLinks.create({
+    account: accountId,
+    type: 'account_onboarding',
+    refresh_url: 'https://example.com/reauth',
+    return_url: 'https://example.com/done',
+  });
+  return link.url;
 }
 
 async function main(): Promise<void> {
@@ -112,7 +114,9 @@ async function main(): Promise<void> {
     if (!vendor) throw new Error(`vendor ${id} not found in data/vendors.json`);
     const accountId = vendor.stripeAccountId ?? (await createVendorAccount(stripe, vendor));
     vendorAccounts[id] = accountId;
-    console.log(`${id} ${vendor.name}: ${accountId} transfers=${await waitForTransfers(stripe, accountId)}`);
+    const status = (await stripe.accounts.retrieve(accountId)).capabilities?.transfers ?? 'unknown';
+    const link = status === 'active' ? '' : ` onboard=${await onboardingLink(stripe, accountId)}`;
+    console.log(`${id} ${vendor.name}: ${accountId} transfers=${status}${link}`);
   }
   const updated = vendors.map((v) => (vendorAccounts[v.id] ? { ...v, stripeAccountId: vendorAccounts[v.id] } : v));
   writeFileSync(VENDORS_FILE, JSON.stringify(updated, null, 2) + '\n');
