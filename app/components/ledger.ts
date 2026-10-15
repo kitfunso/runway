@@ -8,6 +8,18 @@ export function shortDate(iso: string): string {
   return new Date(iso + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 }
 
+// Payouts and Connect transfers live on different dashboard pages.
+export function stripeUrl(id: string): string {
+  return id.startsWith('po_')
+    ? `https://dashboard.stripe.com/test/payouts/${id}`
+    : `https://dashboard.stripe.com/test/connect/transfers/${id}`;
+}
+
+// The provider name stays in lib/; the screen says what the number means.
+export function plain(text: string): string {
+  return text.replace(/Specter distress/g, 'Vendor risk');
+}
+
 export const LABEL = 'text-[12px] font-medium uppercase tracking-[0.06em] text-ink-2';
 export const PANEL = 'rounded-[6px] border border-rule bg-sheet';
 export const BTN = 'inline-flex h-9 items-center justify-center rounded-[6px] px-4 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40';

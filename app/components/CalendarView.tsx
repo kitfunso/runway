@@ -8,7 +8,7 @@ import type { ReplanChange } from '@/lib/replan';
 import type { Transfer } from './AuditBand';
 import type { MemoryItem } from './LearningStrip';
 import { WhyButton } from './WhyButton';
-import { gbp, shortDate, LABEL, PANEL, PILL } from './ledger';
+import { gbp, shortDate, stripeUrl, LABEL, PANEL, PILL } from './ledger';
 
 type Props = {
   schedule: Schedule | null;
@@ -21,12 +21,11 @@ type Props = {
   onWhy: (invoiceId: string) => Promise<string>;
 };
 
-const TRANSFER_URL = 'https://dashboard.stripe.com/test/connect/transfers/';
 
 const RULE_LABEL: Record<ScheduleEntry['reason'], string> = {
-  'auto-discount': 'Early for discount',
+  'auto-discount': 'Discount',
   'auto-due': 'On due date',
-  'auto-stretch': 'Stretched, cash first',
+  'auto-stretch': 'Stretched for cash',
   'flagged': 'Needs a decision',
 };
 
@@ -42,8 +41,8 @@ const ACTION_PILL: Record<Action, { label: string; cls: string }> = {
 
 const ORDER: Record<Action, number> = { held: 0, released: 1, trusted: 2, paid: 3, scheduled: 3 };
 
-const TH = 'sticky top-0 z-10 h-10 border-b border-rule bg-sheet px-3 text-left text-[12px] font-medium uppercase tracking-[0.06em] text-ink-2 shadow-[0_1px_0_rgba(0,0,0,.04)]';
-const TD = 'h-11 px-3 align-middle';
+const TH = 'sticky top-0 z-10 h-10 border-b border-rule bg-sheet px-2.5 text-left text-[12px] font-medium uppercase tracking-[0.06em] text-ink-2 shadow-[0_1px_0_rgba(0,0,0,.04)]';
+const TD = 'h-11 px-2.5 align-middle';
 
 export function CalendarView({ schedule, invoices, vendors, changes, transfers, trusted, onWhy }: Props) {
   if (!schedule) {
@@ -85,7 +84,7 @@ export function CalendarView({ schedule, invoices, vendors, changes, transfers, 
         <span className="font-mono text-[12px] text-ink-2">{schedule.scheduleId.slice(0, 8)}</span>
       </div>
       <div className="max-h-[560px] overflow-auto border-t border-rule">
-        <table className="w-full min-w-[820px] border-collapse text-[13px]">
+        <table className="w-full min-w-[760px] border-collapse text-[13px]">
           <thead>
             <tr>
               <th className={`${TH} pl-6`}>Date</th>
@@ -94,7 +93,6 @@ export function CalendarView({ schedule, invoices, vendors, changes, transfers, 
               <th className={`${TH} text-right`}>Amount</th>
               <th className={TH}>Action</th>
               <th className={TH}>Rule</th>
-              <th className={`${TH} text-right`}>Risk</th>
               <th className={TH}>Stripe</th>
               <th className={`${TH} pr-6`}><span className="sr-only">Why</span></th>
             </tr>
@@ -114,8 +112,8 @@ export function CalendarView({ schedule, invoices, vendors, changes, transfers, 
                   style={{ animationDelay: `${Math.min(i, 20) * 30}ms` }}
                 >
                   <td className={`${TD} whitespace-nowrap pl-6 font-mono`}>{shortDate(e.payDate)}</td>
-                  <td className={`${TD} max-w-[180px] truncate`}>{vendor?.name ?? inv?.vendorId ?? '-'}</td>
-                  <td className={`${TD} whitespace-nowrap font-mono text-[12px] text-ink-2`}>{e.invoiceId}</td>
+                  <td className={`${TD} max-w-[160px] truncate`}>{vendor?.name ?? inv?.vendorId ?? '-'}</td>
+                  <td className={`${TD} max-w-[140px] truncate font-mono text-[12px] text-ink-2`} title={e.invoiceId}>{e.invoiceId}</td>
                   <td className={`${TD} whitespace-nowrap text-right font-mono`}>{inv ? gbp(inv.amount) : '-'}</td>
                   <td className={TD}>
                     <span className={`${PILL} ${pill.cls}`} title={action === 'trusted' ? trust?.reason : undefined}>
@@ -127,13 +125,10 @@ export function CalendarView({ schedule, invoices, vendors, changes, transfers, 
                     {e.projectedSaving > 0 && <span className="text-money">, saves <span className="font-mono">{gbp(e.projectedSaving)}</span></span>}
                     {moved && ', moved by inflow'}
                   </td>
-                  <td className={`${TD} text-right font-mono text-[12px] ${e.distressScore >= 0.5 ? 'text-floor' : 'text-ink-2'}`}>
-                    {e.distressScore.toFixed(2)}
-                  </td>
                   <td className={`${TD} whitespace-nowrap font-mono text-[12px]`}>
                     {transfer?.transferId ? (
-                      <a href={TRANSFER_URL + transfer.transferId} target="_blank" rel="noreferrer" className="text-ink underline decoration-rule underline-offset-2 hover:decoration-ink">
-                        {transfer.transferId.slice(0, 12)}
+                      <a href={stripeUrl(transfer.transferId)} target="_blank" rel="noreferrer" className="text-ink underline decoration-rule underline-offset-2 hover:decoration-ink">
+                        {transfer.transferId.slice(0, 10)}
                       </a>
                     ) : (
                       <span className="text-ink-2">–</span>
