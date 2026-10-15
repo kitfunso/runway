@@ -96,7 +96,7 @@ async function main() {
   const full = optimise({ invoices, vendors, forecast, distressScores });
 
   const escalationIds = full.escalations.map((e) => e.invoiceId).sort();
-  const expectedIds = ['INV-FLOOR-BREACH', 'INV-LARGE-NEW', 'INV-SPECTER-DISTRESSED'];
+  const expectedIds = ['INV-FLOOR-BREACH', 'INV-LARGE-NEW', 'INV-RELEASE-01', 'INV-SPECTER-DISTRESSED'];
   check(
     `escalation IDs exactly = ${expectedIds.join(', ')}`,
     JSON.stringify(escalationIds) === JSON.stringify(expectedIds),
@@ -118,7 +118,28 @@ async function main() {
   check(`totalSaving >= £3500 (got £${full.totalSaving})`, full.totalSaving >= 3500);
 
   // Schedule entry count = invoice count
-  check('40 entries returned', full.entries.length === 40);
+  check('41 entries returned', full.entries.length === 41);
+
+  // ============================================================
+  // (f) a customer payment releases the held invoice
+  // ============================================================
+  console.log('\n(f) inflow releases INV-RELEASE-01');
+  const heldReason = full.escalations.find((e) => e.invoiceId === 'INV-RELEASE-01')?.reasonForEscalation ?? '';
+  check('(f) held at base only for the floor rule', heldReason.includes('breach floor') && !heldReason.includes(';'),
+    `got "${heldReason}"`);
+
+  const INFLOW = 6000;
+  const funded = optimise({
+    invoices, vendors, distressScores,
+    forecast: { ...forecast, openingCash: forecast.openingCash + INFLOW },
+  });
+  const fundedEscIds = funded.escalations.map((e) => e.invoiceId).sort();
+  const originalIds = expectedIds.filter((id) => id !== 'INV-RELEASE-01');
+  check('(f) with inflow only the original three escalate',
+    JSON.stringify(fundedEscIds) === JSON.stringify(originalIds), `got ${JSON.stringify(fundedEscIds)}`);
+  const released = funded.entries.find((e) => e.invoiceId === 'INV-RELEASE-01');
+  check('(f) with inflow INV-RELEASE-01 is auto-pay', released?.reason === 'auto-due', `got ${released?.reason}`);
+  check('(f) with inflow it pays on its due date', released?.payDate === '2026-05-07', `got ${released?.payDate}`);
 
   console.log(`\n${pass} passed, ${fail} failed`);
   if (fail > 0) process.exit(1);

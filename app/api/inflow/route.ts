@@ -41,7 +41,7 @@ export async function GET() {
     const demo = DemoStripe.parse(JSON.parse(readFileSync(file, 'utf8')));
     const inv = await stripe.invoices.retrieve(demo.invoiceId);
     const paid = inv.status === 'paid';
-    const amount = (inv.amount_paid ?? 0) / 100;
+    const amount = (paid ? (inv.amount_paid ?? 0) : (inv.amount_due ?? 0)) / 100;
 
     if (paid && claimInflowLog(demo.invoiceId)) {
       appendAudit({
@@ -58,6 +58,7 @@ export async function GET() {
       configured: true,
       paid,
       amount,
+      customerName: inv.customer_name ?? null,
       hostedInvoiceUrl: inv.hosted_invoice_url ?? demo.hostedInvoiceUrl,
     });
   } catch (err) {

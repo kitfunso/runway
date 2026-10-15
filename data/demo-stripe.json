@@ -1,0 +1,10 @@
+{
+  "customerId": "cus_VRnCZo3fogXoeV",
+  "invoiceId": "in_1UQtcECxm8Ilh6aX4Q9cQJAJ",
+  "hostedInvoiceUrl": "https://invoice.stripe.com/i/acct_1SpCU2Cxm8Ilh6aX/test_YWNjdF8xU3BDVTJDeG04SWxoNmFYLF9WUm5DR0NRaFU0RkI4c1dCTHU2UnBtZjVLQWxHWUFBLDE4MjYzMDU4MQ0200wljMiW0g?s=ap",
+  "vendorAccounts": {
+    "V-002": "acct_1UQtFbCkumzBy06G",
+    "V-003": "acct_1UQtFfEEU9NLVHEV",
+    "V-001": "acct_1UQtFj2QVKqO5siE"
+  }
+}

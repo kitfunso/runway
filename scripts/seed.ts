@@ -1,8 +1,8 @@
 // Deterministic seed for Floater. Produces:
 //   data/vendors.json    — 12 vendors (10 reliable, V-009 distressed in Specter, V-010 NEW)
-//   data/invoices.json   — 40 invoices, hand-tuned so the optimiser yields exactly
-//                          [INV-LARGE-NEW, INV-SPECTER-DISTRESSED, INV-FLOOR-BREACH]
-//                          as the escalation set under DEMO_REPLAY=1.
+//   data/invoices.json   - 41 invoices, hand-tuned: the escalation set under DEMO_REPLAY=1
+//                          is the 3 below + INV-RELEASE-01, which £6k extra opening
+//                          cash releases to auto-pay.
 //   data/cash-forecast.json — 60-day forecast: opening £80k, floor £40k,
 //                          rent day 0, AR every Friday £30k, payroll days 28 + 56.
 //
@@ -145,10 +145,10 @@ const earlySeeds: Array<[string, number, number]> = [
   ['V-002', 1, 4500],
   ['V-003', 2, 4400],
   ['V-004', 3, 4600],
-  ['V-005', 4, 4500],
-  ['V-006', 5, 4400],
-  ['V-007', 6, 4500],
-  ['V-008', 6, 4600],
+  ['V-005', 3, 4500],
+  ['V-006', 3, 4400],
+  ['V-007', 3, 4500],
+  ['V-008', 3, 4600],
 ];
 earlySeeds.forEach(([vendorId, dueDay, amount], i) => {
   seeds.push({
@@ -161,13 +161,25 @@ earlySeeds.forEach(([vendorId, dueDay, amount], i) => {
   });
 });
 
+// ----- the invoice a customer payment releases -----
+// EARLY-01..07 all due by day 3 leave £500 of headroom on day 3, so paying this on
+// due breaches the floor and it escalates. With £6k extra opening cash it auto-pays.
+seeds.push({
+  id: 'INV-RELEASE-01',
+  vendorId: 'V-003',                  // reliable, distress 0.05
+  amount: 1_500,
+  dueDay: 3,
+  netDays: 30,
+  category: 'saas',
+});
+
 // ----- 18 invoices with 5/10 net 30 (the auto-discount workhorses) -----
 // dueDays bounded [22, 50] so pay-early dates (issuedDay+10) are >= day 2 and
 // <= day 30 — funded by AR receipts before the post-day-53 dry period.
 const fiveTenVendors = ['V-001','V-002','V-003','V-004','V-006','V-007','V-008','V-011','V-012'];
 const fiveTenSchedule: Array<[number, number]> = [
   // [dueDay, amount]   — every amount under £5k auto-pay threshold
-  [22, 4300], [24, 4400], [26, 4200], [28, 4500],
+  [25, 4300], [24, 4400], [26, 4200], [28, 4500],
   [30, 4300], [32, 4100], [34, 4400], [36, 4300],
   [38, 4500], [40, 4200], [41, 4300], [43, 4400],
   [45, 4300], [46, 4200], [48, 4400], [49, 4300],
@@ -189,7 +201,7 @@ fiveTenSchedule.forEach(([dueDay, amount], i) => {
 // ----- 9 invoices with 2/10 net 30 -----
 const twoTenVendors = ['V-007','V-008','V-011','V-012','V-002','V-003','V-001','V-004','V-006'];
 const twoTenSchedule: Array<[number, number]> = [
-  [21, 1500], [25, 1700], [29, 1400], [31, 1600], [37, 1800],
+  [24, 1500], [25, 1700], [29, 1400], [31, 1600], [37, 1800],
   [42, 1500], [44, 1700], [47, 1400], [49, 1600],
 ];
 twoTenSchedule.forEach(([dueDay, amount], i) => {
@@ -228,8 +240,8 @@ const invoices: Invoice[] = seeds.map(buildInvoice);
 // Sanity assertions before writing
 // ============================================================
 
-if (invoices.length !== 40) {
-  throw new Error(`Expected 40 invoices, got ${invoices.length}`);
+if (invoices.length !== 41) {
+  throw new Error(`Expected 41 invoices, got ${invoices.length}`);
 }
 const escalationIds = new Set(['INV-LARGE-NEW', 'INV-SPECTER-DISTRESSED', 'INV-FLOOR-BREACH']);
 for (const id of escalationIds) {
