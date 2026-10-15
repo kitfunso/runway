@@ -50,8 +50,13 @@ function Body({ inflow }: { inflow: InflowState | null }) {
   return (
     <div className="space-y-2">
       <p className="text-sm">
-        Open receivable: Acme Ltd{' '}
-        <span className="font-mono tabular-nums">{gbp(inflow.amount)}</span>
+        Open receivable: Acme Ltd
+        {inflow.amount > 0 && (
+          <>
+            {' '}
+            <span className="font-mono tabular-nums">{gbp(inflow.amount)}</span>
+          </>
+        )}
       </p>
       {inflow.hostedInvoiceUrl && (
         <>
