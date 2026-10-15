@@ -5,10 +5,10 @@ import { existsSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from
 import { join } from 'node:path';
 import { runsDir } from '../lib/audit';
 import { getStripe } from '../lib/stripe';
+import { mintDemoInvoice } from '../lib/demo-invoice';
 
 const ROOT = join(__dirname, '..');
 const DEMO_FILE = join(ROOT, 'data', 'demo-stripe.json');
-const INFLOW_PENCE = 600_000;
 
 process.loadEnvFile(join(ROOT, '.env.local'));
 
@@ -25,32 +25,7 @@ async function main(): Promise<void> {
   if (!stripe) throw new Error('STRIPE_SECRET_KEY is not set in .env.local');
 
   const previous = JSON.parse(readFileSync(DEMO_FILE, 'utf8')) as { vendorAccounts: Record<string, string> };
-
-  const customer = await stripe.customers.create({
-    name: 'Northwind Retail Ltd',
-    email: 'billing@northwind-retail.example',
-  });
-  const draft = await stripe.invoices.create({
-    customer: customer.id,
-    currency: 'gbp',
-    collection_method: 'send_invoice',
-    days_until_due: 14,
-  });
-  await stripe.invoiceItems.create({
-    customer: customer.id,
-    invoice: draft.id,
-    amount: INFLOW_PENCE,
-    currency: 'gbp',
-    description: 'October retainer',
-  });
-  const invoice = await stripe.invoices.finalizeInvoice(draft.id);
-
-  const demo = {
-    customerId: customer.id,
-    invoiceId: invoice.id,
-    hostedInvoiceUrl: invoice.hosted_invoice_url ?? null,
-    vendorAccounts: previous.vendorAccounts,
-  };
+  const demo = { ...(await mintDemoInvoice(stripe)), vendorAccounts: previous.vendorAccounts };
   writeFileSync(DEMO_FILE, JSON.stringify(demo, null, 2) + '\n');
   console.log(`cleared ${clearInflowMarkers()} inflow marker(s)`);
   console.log(JSON.stringify({ ...demo, vendorAccounts: undefined }, null, 2));

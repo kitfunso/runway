@@ -45,14 +45,7 @@ const TH = 'sticky top-0 z-10 h-10 border-b border-rule bg-sheet px-2.5 text-lef
 const TD = 'h-11 px-2.5 align-middle';
 
 export function CalendarView({ schedule, invoices, vendors, changes, transfers, trusted, onWhy }: Props) {
-  if (!schedule) {
-    return (
-      <section className={`${PANEL} p-6`}>
-        <div className={LABEL}>Schedule</div>
-        <p className="mt-2 text-sm text-ink-2">Optimise to build the payment schedule.</p>
-      </section>
-    );
-  }
+  if (!schedule) return <BillsTable invoices={invoices} vendors={vendors} />;
 
   const invById = new Map(invoices.map((i) => [i.id, i]));
   const vendById = new Map(vendors.map((v) => [v.id, v]));
@@ -140,6 +133,54 @@ export function CalendarView({ schedule, invoices, vendors, changes, transfers, 
                 </tr>
               );
             })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function discountTerm(inv: Invoice): string {
+  if (!inv.discountPct || !inv.discountDays) return `Net ${inv.netDays}, no discount`;
+  const by = new Date(Date.parse(inv.issuedDate + 'T00:00:00Z') + inv.discountDays * 86_400_000).toISOString().slice(0, 10);
+  return `${Math.round(inv.discountPct * 100)}% off if paid by ${shortDate(by)}`;
+}
+
+// Before Optimise: the bills owed, by due date, so the viewer sees the problem first.
+function BillsTable({ invoices, vendors }: { invoices: Invoice[]; vendors: Vendor[] }) {
+  const vendById = new Map(vendors.map((v) => [v.id, v]));
+  const bills = [...invoices].sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.id.localeCompare(b.id));
+  const total = bills.reduce((s, i) => s + i.amount, 0);
+  return (
+    <section className={`${PANEL} overflow-hidden`}>
+      <div className="flex items-baseline justify-between gap-4 px-6 pb-4 pt-5">
+        <div className="flex items-baseline gap-3">
+          <h2 className={LABEL}>Bills to pay</h2>
+          <span className="text-[13px] text-ink-2">{bills.length} bills, {gbp(total)} owed</span>
+        </div>
+        <span className="text-[12px] text-ink-2">Optimise to plan when to pay each one</span>
+      </div>
+      <div className="max-h-[880px] overflow-auto border-t border-rule">
+        <table className="w-full min-w-[640px] border-collapse text-[13px]">
+          <thead>
+            <tr>
+              <th className={`${TH} pl-6`}>Due</th>
+              <th className={TH}>Vendor</th>
+              <th className={TH}>Invoice</th>
+              <th className={`${TH} text-right`}>Amount</th>
+              <th className={`${TH} pr-6`}>Terms</th>
+            </tr>
+          </thead>
+          <tbody>
+            {bills.map((inv) => (
+              <tr key={inv.id} className="border-b border-rule last:border-b-0">
+                <td className={`${TD} whitespace-nowrap pl-6 font-mono`}>{shortDate(inv.dueDate)}</td>
+                <td className={`${TD} max-w-[180px] truncate`}>{vendById.get(inv.vendorId)?.name ?? inv.vendorId}</td>
+                <td className={`${TD} max-w-[160px] truncate font-mono text-[12px] text-ink-2`} title={inv.id}>{inv.id}</td>
+                <td className={`${TD} whitespace-nowrap text-right font-mono`}>{gbp(inv.amount)}</td>
+                <td className={`${TD} whitespace-nowrap pr-6 text-[12px] ${inv.discountPct ? 'text-money' : 'text-ink-2'}`}>{discountTerm(inv)}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

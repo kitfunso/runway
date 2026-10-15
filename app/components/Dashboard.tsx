@@ -15,7 +15,7 @@ import { InflowCard, type InflowState } from './InflowCard';
 import { AuditBand, type Transfer, type VerifyResult } from './AuditBand';
 import { LearningStrip, type LearningRun, type MemoryItem } from './LearningStrip';
 import { diffSchedules, type ReplanChange } from '@/lib/replan';
-import { gbp, BTN_PRIMARY, BTN_SECONDARY } from './ledger';
+import { gbp, plain, shortDate, BTN_PRIMARY, BTN_SECONDARY } from './ledger';
 
 type ExecuteResult = {
   executed: number;
@@ -63,6 +63,7 @@ export function Dashboard({ invoices, vendors, forecast, autoPayRules, escalateR
   const [trusted, setTrusted] = useState<MemoryItem[]>([]);
   const [learning, setLearning] = useState<LearningRun[] | null>(null);
   const [runKey, setRunKey] = useState(0);
+  const [resetting, setResetting] = useState(false);
   const hasSchedule = schedule !== null;
   const inflowPaid = inflow?.paid === true;
 
@@ -119,10 +120,36 @@ export function Dashboard({ invoices, vendors, forecast, autoPayRules, escalateR
     }
   }
 
+  async function resetDemo() {
+    setResetting(true);
+    try {
+      const res = await fetch('/api/reset', { method: 'POST' });
+      if (!res.ok) throw new Error(`/api/reset returned ${res.status}`);
+      window.location.reload();
+    } catch (e) {
+      setError((e as Error).message);
+      setResetting(false);
+    }
+  }
+
   async function runNextPayment() {
     setDecisions([]);
     setRunKey((k) => k + 1);
     await runOptimise();
+  }
+
+  // The schedule carries the policy's reason; memory only adds a past decision when one exists.
+  function policyReason(invoiceId: string): string | null {
+    if (!schedule) return null;
+    const esc = schedule.escalations.find((e) => e.invoiceId === invoiceId);
+    if (esc) return `Held by policy: ${plain(esc.reasonForEscalation)}.`;
+    const entry = schedule.entries.find((e) => e.invoiceId === invoiceId);
+    if (!entry) return null;
+    const on = shortDate(entry.payDate);
+    if (entry.reason === 'auto-discount') return `Paid early on ${on} to take the discount, saving ${gbp(entry.projectedSaving)}. It passes every auto-pay rule.`;
+    if (entry.reason === 'auto-stretch') return `Paid on ${on}, after its due date, to keep cash above the floor.`;
+    if (entry.reason === 'auto-due') return `Paid on its due date, ${on}: no discount to take. It passes every auto-pay rule.`;
+    return null;
   }
 
   async function askWhy(invoiceId: string): Promise<string> {
@@ -133,7 +160,11 @@ export function Dashboard({ invoices, vendors, forecast, autoPayRules, escalateR
     });
     if (!res.ok) throw new Error(`/api/why returned ${res.status}`);
     const data: { answer: string } = await res.json();
-    return data.answer;
+    const remembered = data.answer.startsWith('No recorded decision') ? null : data.answer;
+    const held = heldByMemory.find((m) => m.invoiceId === invoiceId);
+    const trust = trusted.find((m) => m.invoiceId === invoiceId);
+    const policy = held ? `Held from memory: ${held.reason}` : trust ? `Trusted from memory: ${trust.reason}` : policyReason(invoiceId);
+    return [policy, remembered && `Memory: ${remembered}`].filter(Boolean).join(' ') || data.answer;
   }
 
   async function replan(amount: number, before: Schedule) {
@@ -243,6 +274,9 @@ export function Dashboard({ invoices, vendors, forecast, autoPayRules, escalateR
           </button>
           <button type="button" onClick={runExecute} disabled={executing || !schedule} className={BTN_SECONDARY}>
             {executing ? 'Executing...' : 'Execute schedule'}
+          </button>
+          <button type="button" onClick={() => void resetDemo()} disabled={resetting} className={BTN_SECONDARY}>
+            {resetting ? 'Resetting...' : 'Reset demo'}
           </button>
         </div>
       </header>

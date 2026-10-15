@@ -32,7 +32,12 @@ function addDays(iso: string, d: number): string {
   return new Date(Date.parse(iso + 'T00:00:00Z') + d * 86_400_000).toISOString().slice(0, 10);
 }
 
-type Runway = { day0: string; opening: number; cash: number[]; payDays: Set<number> };
+type Runway = { day0: string; opening: number; cash: number[]; team: number[]; payDays: Set<number> };
+
+function accumulate(opening: number, delta: number[]): number[] {
+  let running = opening;
+  return delta.map((d) => (running += d));
+}
 
 function buildRunway(forecast: Forecast, schedule: Schedule | null, invoices: Invoice[]): Runway {
   const day0 = [...forecast.flows.map((f) => f.date)].sort()[0] ?? new Date().toISOString().slice(0, 10);
@@ -40,6 +45,12 @@ function buildRunway(forecast: Forecast, schedule: Schedule | null, invoices: In
   for (const f of forecast.flows) {
     const d = dayIndex(day0, f.date);
     if (d >= 0 && d <= HORIZON) delta[d]! += f.inflow - f.outflow;
+  }
+  // The team without Runway: every bill paid in full on its due date, the optimiser's naive baseline.
+  const teamDelta = [...delta];
+  for (const inv of invoices) {
+    const d = dayIndex(day0, inv.dueDate);
+    if (d >= 0 && d <= HORIZON) teamDelta[d]! -= inv.amount;
   }
   const payDays = new Set<number>();
   if (schedule) {
@@ -53,13 +64,8 @@ function buildRunway(forecast: Forecast, schedule: Schedule | null, invoices: In
       payDays.add(d);
     }
   }
-  const cash: number[] = [];
-  let running = forecast.openingCash;
-  for (let d = 0; d <= HORIZON; d++) {
-    running += delta[d]!;
-    cash.push(running);
-  }
-  return { day0, opening: forecast.openingCash, cash, payDays };
+  const team = accumulate(forecast.openingCash, teamDelta);
+  return { day0, opening: forecast.openingCash, cash: schedule ? accumulate(forecast.openingCash, delta) : team, team, payDays };
 }
 
 function niceStep(max: number): number {
@@ -116,32 +122,40 @@ export function RunwayHero({ forecast, schedule, invoices, inflow, extraCash, cu
         floor={forecast.cashFloor}
         inflowLabel={inflow?.paid && extraCash > 0 ? `${customerName} paid ${gbp(extraCash)}` : null}
         extraCash={extraCash}
+        planned={schedule !== null}
       />
     </section>
   );
 }
 
-type ChartProps = { runway: Runway; floor: number; inflowLabel: string | null; extraCash: number };
+type ChartProps = { runway: Runway; floor: number; inflowLabel: string | null; extraCash: number; planned: boolean };
 
-function RunwayChart({ runway, floor, inflowLabel, extraCash }: ChartProps) {
+function RunwayChart({ runway, floor, inflowLabel, extraCash, planned }: ChartProps) {
   const [ref, width] = useWidth();
   const W = Math.max(320, width);
   const plotW = W - M.l - M.r;
   const plotH = H - M.t - M.b;
-  const top = Math.max(...runway.cash, runway.opening, floor) * 1.08;
+  const top = Math.max(...runway.cash, ...runway.team, runway.opening, floor) * 1.08;
   const step = niceStep(top);
   const maxY = Math.ceil(top / step) * step;
   const x = (d: number) => M.l + (d / HORIZON) * plotW;
   const y = (c: number) => M.t + (1 - Math.max(0, c) / maxY) * plotH;
 
-  const segs: string[] = [`M${x(0).toFixed(1)},${y(runway.opening).toFixed(1)}`];
-  let prev = runway.opening;
-  runway.cash.forEach((c, d) => {
-    segs.push(`L${x(d).toFixed(1)},${y(prev).toFixed(1)}`, `L${x(d).toFixed(1)},${y(c).toFixed(1)}`);
-    prev = c;
-  });
-  const line = segs.join(' ');
+  const stepPath = (cash: number[]): string => {
+    const segs: string[] = [`M${x(0).toFixed(1)},${y(runway.opening).toFixed(1)}`];
+    let prev = runway.opening;
+    cash.forEach((c, d) => {
+      segs.push(`L${x(d).toFixed(1)},${y(prev).toFixed(1)}`, `L${x(d).toFixed(1)},${y(c).toFixed(1)}`);
+      prev = c;
+    });
+    return segs.join(' ');
+  };
+  const line = stepPath(runway.cash);
+  const teamLine = stepPath(runway.team);
   const area = `${line} L${x(HORIZON).toFixed(1)},${y(0).toFixed(1)} L${x(0).toFixed(1)},${y(0).toFixed(1)} Z`;
+  let teamLow = 0;
+  runway.team.forEach((c, d) => { if (c < runway.team[teamLow]!) teamLow = d; });
+  const teamLowCash = runway.team[teamLow]!;
 
   const yTicks: number[] = [];
   for (let v = 0; v <= maxY; v += step) yTicks.push(v);
@@ -166,8 +180,21 @@ function RunwayChart({ runway, floor, inflowLabel, extraCash }: ChartProps) {
           </text>
         ))}
 
-        <path d={area} className="runway-line" fill="var(--color-ink)" fillOpacity="0.04" />
-        <path d={line} className="runway-line" fill="none" stroke="var(--color-ink)" strokeWidth="1.5" strokeLinejoin="round" />
+        <path d={teamLine} fill="none" stroke="var(--color-ink-2)" strokeWidth="1.5" strokeDasharray="5 4" strokeLinejoin="round" />
+        {planned && <path d={area} className="runway-line" fill="var(--color-ink)" fillOpacity="0.04" />}
+        {planned && <path d={line} className="runway-line" fill="none" stroke="var(--color-ink)" strokeWidth="1.5" strokeLinejoin="round" />}
+        <circle cx={x(teamLow)} cy={y(teamLowCash)} r="3.5" fill={teamLowCash < floor ? 'var(--color-floor)' : 'var(--color-ink-2)'} />
+        <text
+          x={x(teamLow) + (teamLow > HORIZON * 0.7 ? -8 : 8)}
+          y={y(teamLowCash) > M.t + plotH - 20 ? y(teamLowCash) - 10 : y(teamLowCash) + 18}
+          textAnchor={teamLow > HORIZON * 0.7 ? 'end' : 'start'}
+          fontSize="12"
+          fontWeight="500"
+          fill={teamLowCash < floor ? 'var(--color-floor)' : 'var(--color-ink-2)'}
+          className="font-sans"
+        >
+          Without Runway (every bill on its due date): {gbp(teamLowCash)} on {shortDate(addDays(runway.day0, teamLow))}
+        </text>
 
         {[...runway.payDays].map((d) => (
           <line key={`t${d}`} x1={x(d)} x2={x(d)} y1={y(runway.cash[d]!) - 4} y2={y(runway.cash[d]!) + 4} stroke="var(--color-ink)" strokeWidth="1" />
@@ -177,9 +204,11 @@ function RunwayChart({ runway, floor, inflowLabel, extraCash }: ChartProps) {
         <text x={M.l + plotW} y={y(floor) - 6} textAnchor="end" fontSize="11" fill="var(--color-floor)" className="font-sans">
           Floor {gbp(floor)}
         </text>
-        <text x={M.l + plotW} y={y(tailTop) - 10} textAnchor="end" fontSize="12" fill="var(--color-ink)" className="font-sans">
-          Projected cash {gbp(last)}
-        </text>
+        {planned && (
+          <text x={M.l + plotW} y={y(tailTop) - 10} textAnchor="end" fontSize="12" fill="var(--color-ink)" className="font-sans">
+            With Runway {gbp(last)}
+          </text>
+        )}
 
         <line x1={x(0)} x2={x(0)} y1={M.t - 8} y2={M.t + plotH} stroke="var(--color-ink-2)" strokeWidth="1" />
         <text x={x(0) + 6} y={M.t - 12} fontSize="11" fill="var(--color-ink-2)" className="font-sans">Today</text>
