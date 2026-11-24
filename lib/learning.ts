@@ -1,6 +1,3 @@
-// One line per payment run in runs/learning.jsonl: how many invoices went to the human
-// versus how many memory settled. The UI plots it to show the agent improving.
-
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';

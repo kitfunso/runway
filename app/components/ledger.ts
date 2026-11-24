@@ -1,5 +1,3 @@
-// Shared formatters and class strings for the treasury ledger look (docs/DESIGN.md).
-
 export function gbp(n: number): string {
   return `£${Math.round(n).toLocaleString('en-GB')}`;
 }
@@ -15,7 +13,6 @@ export function stripeUrl(id: string): string {
     : `https://dashboard.stripe.com/test/connect/transfers/${id}`;
 }
 
-// The provider name stays in lib/; the screen says what the number means.
 export function plain(text: string): string {
   return text.replace(/Specter distress/g, 'Vendor risk');
 }

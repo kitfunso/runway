@@ -1,6 +1,3 @@
-// POST /api/reset - starts the demo over: moves the run log, audit chain and memory store
-// aside (never deletes them) and mints a fresh unpaid customer invoice for the QR card.
-
 import { NextResponse } from 'next/server';
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';

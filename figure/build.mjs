@@ -1,6 +1,3 @@
-// Builds public/how-it-works/index.html: node figure/build.mjs [--light]
-// Kit: the anatomy skill at $ANATOMY_HOME (default ~/.claude/skills/anatomy).
-// Low points in model.mjs: lib/optimiser.ts simulate() on data/*.json with DEMO_REPLAY=1.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -14,7 +11,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const SKILL = process.env.ANATOMY_HOME ?? join(homedir(), ".claude", "skills", "anatomy");
 const k = await import(pathToFileURL(join(SKILL, "kit", "iso-kit.mjs")).href);
 const { kitScript } = await import(pathToFileURL(join(SKILL, "scripts", "inline-kit.mjs")).href);
-const theme = "light"; // host page is warm paper; --light is accepted and implied
+const theme = "light";
 
 const WIDTH = 600;
 const HEIGHT = 400;

@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-// Eases the shown value from wherever it is now to `target`, so money figures count, never jump.
 export function useTween(target: number, duration = 400): number {
   const [value, setValue] = useState(target);
   const from = useRef(target);

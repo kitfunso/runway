@@ -1,4 +1,3 @@
-// Renders gfx.html frame by frame into mp4s and transparent chip PNGs. Usage: node render.mjs [s1 s2 s9 chips]
 import { chromium } from 'file:///C:/Users/skf_s/AppData/Roaming/npm/node_modules/@playwright/mcp/node_modules/playwright/index.mjs';
 import { spawn } from 'node:child_process';
 import { pathToFileURL, fileURLToPath } from 'node:url';

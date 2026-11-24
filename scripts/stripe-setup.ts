@@ -1,7 +1,3 @@
-// One-off Stripe test-mode setup for the Runway demo. Run: npx tsx scripts/stripe-setup.ts
-// Needs STRIPE_SECRET_KEY (sk_test_ or rk_test_) in .env.local. Safe to re-run: it
-// reuses accounts already in data/vendors.json and exits if data/demo-stripe.json exists.
-
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type Stripe from 'stripe';
@@ -13,7 +9,6 @@ const ENV_FILE = join(ROOT, '.env.local');
 const VENDORS_FILE = join(ROOT, 'data', 'vendors.json');
 const DEMO_FILE = join(ROOT, 'data', 'demo-stripe.json');
 
-// Vendors of the first two auto-pay entries (INV-EARLY-01, INV-EARLY-02) and of INV-FLOOR-BREACH.
 const RAIL_VENDOR_IDS = ['V-002', 'V-003', 'V-001'] as const;
 const FUND_PENCE = 2_000_000;
 

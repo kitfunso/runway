@@ -1,7 +1,3 @@
-"""Backup voiceover: reads video/SCRIPT.md lines with local Kokoro TTS, fits each to its slot.
-
-Run: python video/tts.py  ->  video/out/vo/NN.wav plus video/out/vo/plan.txt (start seconds per clip)
-"""
 import re
 from pathlib import Path
 

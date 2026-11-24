@@ -2,7 +2,6 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-/* Treasury ledger tokens: docs/DESIGN.md is the source; one colour per meaning. */
 @theme inline {
   --color-paper: #F7F5F0;
   --color-sheet: #FFFFFF;

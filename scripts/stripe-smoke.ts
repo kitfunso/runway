@@ -1,6 +1,3 @@
-// One GBP 1 test transfer to the first demo vendor account, audited like /api/execute.
-// Run after stripe-setup: npx tsx scripts/stripe-smoke.ts
-
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { appendAudit } from '../lib/audit';

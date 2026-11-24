@@ -1,6 +1,3 @@
-// Memory of the finance manager's decisions. Runs on the hippo CLI against an
-// isolated store under RUNS_DIR; any hippo failure falls back to runs/memory.jsonl.
-
 import { spawn } from 'node:child_process';
 import { appendFile, mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';

@@ -1,4 +1,3 @@
-// Valves, rocker lock, memory card and the audit tape printer.
 import * as W from "./world.mjs";
 
 export function valvesOf(k, P, parts) {

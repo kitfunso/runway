@@ -1,4 +1,3 @@
-// Inline test for the audit hash chain. Run: npx tsx lib/__tests__/audit.test.ts
 import { chainRow, verifyRows, GENESIS } from '../audit';
 import type { AuditRow } from '../audit';
 

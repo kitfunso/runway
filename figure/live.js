@@ -1,4 +1,3 @@
-// Inlined into the page after the kit, W (world), M (model), P and START_Z.
 const stage = document.querySelector(".iso-stage");
 const svg = stage.querySelector("svg");
 const $ = (name) => svg.querySelector(`[data-part="${name}"]`);

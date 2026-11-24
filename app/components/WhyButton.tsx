@@ -1,9 +1,5 @@
 'use client';
 
-// Asks memory why an invoice was paid or escalated and shows the answer
-// inline. The fetch itself lives in Dashboard (onAsk); only the answer state
-// is local, so a card can render several without lifting state.
-
 import { useState } from 'react';
 
 type Props = {

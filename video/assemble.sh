@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
-# Builds out/runway-demo.mp4 from gfx/ scenes and captures/ clips. Run: bash video/assemble.sh
 set -euo pipefail
 cd "$(dirname "$0")"
 mkdir -p out/tmp
 ENC=(-an -c:v libx264 -preset veryfast -crf 20 -pix_fmt yuv420p -r 30)
 
-# fit <src> <seconds> <dst>: scale to 1080p and freeze the last frame to fill the slot
 fit() { ffmpeg -v error -y -i "$1" -vf "scale=1920:1080,fps=30,tpad=stop_mode=clone:stop_duration=$2" -t "$2" "${ENC[@]}" "$3"; }
 
 declare -A SLOT=([s1]=11 [s2]=14 [s4]=23 [s5]=17 [s6]=18 [s7]=13 [s8]=10 [s9]=7)

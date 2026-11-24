@@ -1,5 +1,3 @@
-// GET /api/learning returns every payment run so far; POST {reset: true} clears them for re-recording.
-
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { readRuns, resetRuns } from '@/lib/learning';

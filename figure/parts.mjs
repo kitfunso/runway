@@ -1,4 +1,3 @@
-// Static geometry of the cash cistern, built once at rest. Moving parts are built at LOW.start.
 import * as W from "./world.mjs";
 
 export function partsOf(k, P) {

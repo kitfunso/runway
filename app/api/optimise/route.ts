@@ -1,6 +1,3 @@
-// POST /api/optimise: pre-fetch Specter for every vendor, apply the finance manager's remembered
-// decisions, run baseline + full optimiser, log the payment run, return the Schedule.
-
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { loadAll } from '@/lib/data';
@@ -12,7 +9,6 @@ import { newScheduleId } from '@/lib/runs';
 import type { DistressMap, Escalation, Invoice, Vendor } from '@/lib/types';
 
 const MEMORY_DISTRESS = 0.95;
-// Matches the sentence /api/decide stores in memory.
 const NOTE = /On (\d{4}-\d{2}-\d{2}) the finance manager (approved|rejected|deferred) (\S+) from (.+?): (.*)/;
 
 type Note = { date: string; verdict: 'approved' | 'rejected' | 'deferred'; invoiceId: string; vendor: string; why: string };
@@ -22,7 +18,6 @@ type Memory = { heldVendors: Map<string, Note>; deferred: Map<string, Note>; tru
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// extraCash is a customer payment that landed after the forecast was cut; replan re-plans the current run.
 const Body = z.object({
   extraCash: z.number().min(0).max(10_000_000).default(0),
   replan: z.boolean().default(false),
@@ -36,7 +31,6 @@ function parseNotes(text: string): Note[] {
   });
 }
 
-// Rejection holds the vendor, deferral holds that invoice, approval waives the soft rules for the vendor.
 function readMemory(notes: readonly Note[], vendors: readonly Vendor[]): Memory {
   const idByName = new Map(vendors.map((v) => [v.name.toLowerCase(), v.id]));
   const memory: Memory = { heldVendors: new Map(), deferred: new Map(), trustedVendors: new Map() };
@@ -95,7 +89,6 @@ export async function POST(req: NextRequest) {
       memoryReasons[id] = said(note);
     }
 
-    // Trust waives only the history and distress rules; the optimiser still enforces the amount and floor rules.
     const trustedVendors = vendors.map((v) => (memory.trustedVendors.has(v.id) ? { ...v, paymentHistory: 'reliable' as const } : v));
     const trustedScores: DistressMap = { ...distressScores };
     for (const id of memory.trustedVendors.keys()) trustedScores[id] = 0;

@@ -1,6 +1,3 @@
-// Proof that lib/memory.ts round-trips: npx tsx scripts/memory-smoke.ts
-// Set RUNS_DIR to a scratch dir to keep the demo store clean.
-
 import { lastBackend, recall, remember } from '../lib/memory';
 
 async function main(): Promise<void> {

@@ -1,6 +1,3 @@
-// Append-only sha256 hash chain of every money-relevant event, in
-// runs/audit.jsonl. Chain functions are pure; the fs wrappers sit below them.
-
 import { createHash } from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -33,7 +30,6 @@ function sha256(s: string): string {
   return createHash('sha256').update(s).digest('hex');
 }
 
-// Hash covers prevHash + the row body (hash field excluded, prevHash included in the body).
 function hashOf(prevHash: string, body: AuditInput & { prevHash: string }): string {
   return sha256(prevHash + JSON.stringify(body));
 }
@@ -44,7 +40,6 @@ export function chainRow(prev: AuditRow | null, input: AuditInput): AuditRow {
   return { ...body, hash: hashOf(prevHash, body) };
 }
 
-// firstBadRow is 0-based: the index of the first row whose link or hash fails.
 export function verifyRows(rows: readonly AuditRow[]): AuditVerdict {
   let prevHash = GENESIS;
   for (let i = 0; i < rows.length; i++) {
@@ -57,8 +52,6 @@ export function verifyRows(rows: readonly AuditRow[]): AuditVerdict {
   }
   return { ok: true, rows: rows.length, firstBadRow: null, lastHash: rows.length ? prevHash : null };
 }
-
-// --- file IO ---
 
 export function runsDir(): string {
   return process.env.RUNS_DIR ?? join(process.cwd(), 'runs');

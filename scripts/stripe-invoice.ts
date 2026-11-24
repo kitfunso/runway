@@ -1,6 +1,3 @@
-// Mints a fresh customer invoice for the demo's inflow. Run: npx tsx scripts/stripe-invoice.ts
-// Rewrites data/demo-stripe.json (keeps vendorAccounts) and clears the inflow log markers.
-
 import { existsSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { runsDir } from '../lib/audit';

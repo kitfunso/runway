@@ -1,7 +1,3 @@
-// POST /api/execute - stateless. Paid entries become Stripe test-mode payouts (or transfers when the
-// vendor has a stripeAccountId), each preceded by a hash-chained audit row.
-// Run log goes to runs/<scheduleId>.executed.json; no server-side state otherwise.
-
 import { NextRequest, NextResponse } from 'next/server';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -20,7 +16,6 @@ const Decision = z.object({
   verdict: z.enum(['approve', 'defer', 'reject']),
 });
 
-// rule is the ScheduleEntry.reason of the auto-pay entry ('auto-discount' | 'auto-due' | 'auto-stretch').
 const AutoPay = z.object({
   invoiceId: z.string().min(1),
   rule: z.string().min(1).optional(),
@@ -45,7 +40,6 @@ type PayContext = {
 
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
-// Matches the optimiser's cash simulation: the discount is taken on auto-discount entries only.
 function payable(inv: Invoice, rule: string): number {
   return round2(rule === 'auto-discount' && inv.discountPct ? inv.amount * (1 - inv.discountPct) : inv.amount);
 }
@@ -73,8 +67,6 @@ async function payOne(item: PayItem, ctx: PayContext): Promise<TransferResult> {
     });
     const description = `${item.invoiceId} ${vendor.name}`;
     const metadata = { invoiceId: item.invoiceId, vendor: vendor.name, rule: item.rule, auditHash: row.hash };
-    // A vendor with a connected account is paid by transfer; otherwise the payment leaves the
-    // Stripe balance as a payout to the operating bank account that pays the supplier.
     const transfer = accountId
       ? await ctx.stripe.transfers.create({
           amount: Math.round(amount * 100),
@@ -147,7 +139,6 @@ export async function POST(req: NextRequest) {
     vendors: new Map(loadVendors().map((v) => [v.id, v])),
   };
 
-  // Sequential on purpose: each audit row chains on the previous one.
   const transfers: TransferResult[] = [];
   for (const item of items) transfers.push(await payOne(item, ctx));
 

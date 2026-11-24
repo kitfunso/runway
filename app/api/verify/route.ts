@@ -1,5 +1,3 @@
-// GET /api/verify - re-walks runs/audit.jsonl and reports the first broken link, if any.
-
 import { NextResponse } from 'next/server';
 import { verifyAudit } from '@/lib/audit';
 

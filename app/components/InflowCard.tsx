@@ -1,8 +1,5 @@
 'use client';
 
-// Open receivable drawn as an invoice stub. Dumb: Dashboard polls /api/inflow
-// and passes the result down. `inflow === null` means the route is missing or failed.
-
 import { gbp, LABEL } from './ledger';
 
 export type InflowState = {

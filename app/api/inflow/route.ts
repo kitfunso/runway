@@ -1,6 +1,3 @@
-// GET /api/inflow - polls the demo customer invoice (data/demo-stripe.json) in Stripe test mode.
-// The first poll that sees it paid writes one "inflow" audit row, guarded by a marker file.
-
 import { NextResponse } from 'next/server';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -20,7 +17,6 @@ const DemoStripe = z.object({
 
 const NOT_CONFIGURED = { configured: false, paid: false, amount: 0, hostedInvoiceUrl: null };
 
-// 'wx' makes the marker create atomic, so concurrent polls log the inflow once.
 function claimInflowLog(invoiceId: string): boolean {
   mkdirSync(runsDir(), { recursive: true });
   try {

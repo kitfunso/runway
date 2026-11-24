@@ -1,5 +1,3 @@
-// Mints the demo customer's open £6,000 invoice that the QR card shows.
-
 import type Stripe from 'stripe';
 
 const INFLOW_PENCE = 600_000;

@@ -1,6 +1,3 @@
-// POST /api/why { invoiceId } -> { answer }. Asks memory why an invoice was
-// paid or escalated; says so plainly when nothing was recorded.
-
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { recall } from '@/lib/memory';

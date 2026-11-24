@@ -1,12 +1,8 @@
-// Pure model for the how-it-works figure. Every amount is from data/*.json; the
-// low points come from lib/optimiser.ts simulate() under DEMO_REPLAY=1 (see README in build.mjs).
-
 export const FLOOR = 40000;
 export const OPENING = 80000;
 export const INFLOW = { from: "Acme Ltd", amount: 6000 };
 export const AUTO_LIMIT = 5000;
 
-// Left to right along the manifold.
 export const VALVES = [
   { id: "INV-EARLY-01", vendor: "Brightleaf Logistics", amount: 4500, kind: "auto" },
   { id: "INV-RELEASE-01", vendor: "Coral Cloud Hosting", amount: 1500, kind: "floor" },
@@ -14,7 +10,6 @@ export const VALVES = [
   { id: "remembered", vendor: "rejected vendor", amount: 0, kind: "pinned" },
 ];
 
-// Lowest projected balance over the 60-day horizon at each step.
 export const LOW = {
   start: 49400,
   afterFirst: 44900,

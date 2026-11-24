@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Cuts the recorded take into fixed-length scene clips. Run: bash video/cut.sh
 set -euo pipefail
 cd "$(dirname "$0")/captures"
 MAIN=raw/f42b470207072ac9ecf8d708903e3e44.webm
@@ -8,9 +7,7 @@ INV=raw/adcb4b7f2d8b4e235cdcbf973dbe4b3b.webm
 VF="crop=1440:810:0:0,scale=1920:1080:flags=lanczos,fps=30,format=yuv420p"
 ENC=(-an -c:v libx264 -preset veryfast -crf 18)
 
-# part <src> <in> <out> <speed> <name>
 part() { ffmpeg -v error -y -ss "$2" -to "$3" -i "$1" -vf "setpts=PTS/$4,$VF" "${ENC[@]}" "parts/$5.mp4"; }
-# scene <slot seconds> <name> <parts...>: concat parts, freeze the last frame to fill the slot
 scene() {
   local slot=$1 name=$2; shift 2
   : > "parts/$name.txt"

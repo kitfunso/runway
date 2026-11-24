@@ -1,8 +1,5 @@
 'use client';
 
-// The schedule as a ledger: one hairline row per payment, held rows on top,
-// money right-aligned, Stripe transfer ids once Execute has run.
-
 import type { Schedule, Invoice, Vendor, Forecast, ScheduleEntry } from '@/lib/types';
 import type { ReplanChange } from '@/lib/replan';
 import type { Transfer } from './AuditBand';
@@ -146,7 +143,6 @@ function discountTerm(inv: Invoice): string {
   return `${Math.round(inv.discountPct * 100)}% off if paid by ${shortDate(by)}`;
 }
 
-// Before Optimise: the bills owed, by due date, so the viewer sees the problem first.
 function BillsTable({ invoices, vendors }: { invoices: Invoice[]; vendors: Vendor[] }) {
   const vendById = new Map(vendors.map((v) => [v.id, v]));
   const bills = [...invoices].sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.id.localeCompare(b.id));

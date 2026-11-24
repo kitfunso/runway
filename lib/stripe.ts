@@ -1,5 +1,3 @@
-// Stripe client factory. Test-mode keys only: the demo never moves real money.
-
 import Stripe from 'stripe';
 
 export function getStripe(): Stripe | null {

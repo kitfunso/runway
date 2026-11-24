@@ -1,5 +1,4 @@
 'use client';
-
 // Hero: cash today, floor, lowest point, and the 60-day runway line with the
 // schedule's payments drawn on it. The path keeps a fixed command count so the
 // browser can morph it when the schedule changes.
@@ -46,7 +45,6 @@ function buildRunway(forecast: Forecast, schedule: Schedule | null, invoices: In
     const d = dayIndex(day0, f.date);
     if (d >= 0 && d <= HORIZON) delta[d]! += f.inflow - f.outflow;
   }
-  // The team without Runway: every bill paid in full on its due date, the optimiser's naive baseline.
   const teamDelta = [...delta];
   for (const inv of invoices) {
     const d = dayIndex(day0, inv.dueDate);

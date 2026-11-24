@@ -1,8 +1,5 @@
 'use client';
 
-// One pair of bars per payment run: how often the agent asked the human versus
-// decided from hippo memory. Falling amber bars are the learning, so no axis.
-
 import { LABEL, PANEL } from './ledger';
 
 export type MemoryItem = { invoiceId: string; vendorId: string; reason: string };

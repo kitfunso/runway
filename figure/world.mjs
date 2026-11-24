@@ -1,5 +1,3 @@
-// World plan for the cash cistern. Units are about 1 px; x along the bench, y toward the viewer, z up.
-
 export const BASE = { x: -150, y: -58, w: 300, d: 116, r: 8 };
 export const BASE_H = 12;
 export const FOOT_H = 5;
@@ -11,7 +9,7 @@ export const TANK_TOP = SEAT_H + GLASS_H;
 export const POST_W = 4;
 export const FRONT_Y = TANK.y + TANK.d;
 
-export const K = 1.6 / 1000; // world units per pound of water
+export const K = 1.6 / 1000;
 export const zOf = (pounds) => SEAT_H + pounds * K;
 
 export const ROD = [-86, -21];

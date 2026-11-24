@@ -1,8 +1,5 @@
 'use client';
 
-// Audit chain band: the last rows as linked boxes, the Verify result, and the
-// Stripe transfers the run produced. Dumb: Dashboard owns the fetches.
-
 import { gbp, stripeUrl, LABEL, PANEL, BTN_SECONDARY } from './ledger';
 
 export type Transfer = {
@@ -90,7 +87,6 @@ export function AuditBand({ executed, transfers, audit, verified, verifying, aud
   );
 }
 
-// Only the last row's hash comes back from /api/verify, so earlier boxes carry their row number.
 function Chain({ audit, verified }: { audit: VerifyResult; verified: boolean }) {
   const bad = verified && !audit.ok ? audit.firstBadRow : null;
   const end = bad !== null ? Math.min(audit.rows, Math.max(bad + 2, WINDOW)) : audit.rows;

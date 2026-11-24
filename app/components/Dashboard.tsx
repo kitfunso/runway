@@ -1,8 +1,5 @@
 'use client';
 
-// Top-level client component. Holds page state (schedule, decisions, inflow,
-// memory) and dispatches every API call; the children only render.
-
 import { useEffect, useState } from 'react';
 import type { Invoice, Vendor, Forecast, Schedule } from '@/lib/types';
 import type { PolicyRule } from '@/lib/policy';
@@ -67,7 +64,6 @@ export function Dashboard({ invoices, vendors, forecast, autoPayRules, escalateR
   const hasSchedule = schedule !== null;
   const inflowPaid = inflow?.paid === true;
 
-  // Poll the open receivable every 3s once a schedule exists; stop when paid.
   useEffect(() => {
     if (!hasSchedule || inflowPaid) return;
     let cancelled = false;
@@ -86,7 +82,6 @@ export function Dashboard({ invoices, vendors, forecast, autoPayRules, escalateR
     return () => { cancelled = true; clearInterval(id); };
   }, [hasSchedule, inflowPaid]);
 
-  // First time the invoice shows paid: add it to opening cash and re-plan.
   useEffect(() => {
     if (!inflow?.paid || replanned || !schedule) return;
     setReplanned(true);
@@ -138,7 +133,6 @@ export function Dashboard({ invoices, vendors, forecast, autoPayRules, escalateR
     await runOptimise();
   }
 
-  // The schedule carries the policy's reason; memory only adds a past decision when one exists.
   function policyReason(invoiceId: string): string | null {
     if (!schedule) return null;
     const esc = schedule.escalations.find((e) => e.invoiceId === invoiceId);

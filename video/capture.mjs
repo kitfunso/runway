@@ -1,6 +1,3 @@
-// Records the demo flow against a running Runway server. Run: node video/capture.mjs [baseUrl]
-// Writes video/captures/raw/*.webm plus marks.json (seconds from the start of each page's video).
-
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium } from 'file:///C:/Users/skf_s/AppData/Roaming/npm/node_modules/@playwright/mcp/node_modules/playwright/index.mjs';
@@ -41,7 +38,6 @@ await page.mouse.move(1000, 400);
 mark('loaded');
 await wait(1500);
 
-// s3: how it works figure
 const figure = page.locator('iframe').first();
 await scrollTo(figure);
 mark('s3');
@@ -49,7 +45,6 @@ await wait(10000);
 await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
 await wait(1000);
 
-// s4: plan and escalations
 mark('s4');
 await page.getByRole('button', { name: 'Optimise', exact: true }).click();
 await page.getByRole('button', { name: 'Investigate' }).first().waitFor({ timeout: 60000 });
@@ -63,7 +58,6 @@ for (const vendor of ['Iridium Components', 'Jade Studios', 'Acme Office Supplie
   await wait(1200);
 }
 
-// s5: decide, execute, payouts
 mark('s5');
 await scrollTo(card('Iridium Components'));
 await card('Iridium Components').getByRole('button', { name: 'Approve' }).click();
@@ -84,7 +78,6 @@ await wait(1500);
 await scrollTo(page.getByText(/po_[A-Za-z0-9]{6}/).first());
 await wait(3000);
 
-// s6: the customer pays the QR invoice; Runway re-plans
 mark('s6');
 await scrollTo(page.getByText('Scan to pay', { exact: false }).first());
 await wait(2500);
@@ -106,7 +99,6 @@ await wait(4000);
 await scrollTo(page.getByText('Released by inflow').first());
 await wait(3000);
 
-// s7: next payment run, decided from memory
 mark('s7');
 await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
 await wait(900);
@@ -118,7 +110,6 @@ await wait(3500);
 await scrollTo(page.getByText('Held by memory', { exact: false }).first());
 await wait(4000);
 
-// s8: why and verify
 mark('s8');
 const trustedRow = page.locator('tr', { hasText: 'INV-SPECTER' }).first();
 await scrollTo(trustedRow);

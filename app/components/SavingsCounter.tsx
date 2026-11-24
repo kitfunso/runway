@@ -1,7 +1,5 @@
 'use client';
 
-// Run summary beside the hero figures: what the schedule saved, paid alone, and held.
-
 import type { Invoice, Schedule } from '@/lib/types';
 import { gbp, LABEL } from './ledger';
 import { useTween } from './useTween';

@@ -1,6 +1,3 @@
-// Pure diff of two schedules by invoiceId. Used to show what a mid-session
-// cash inflow changed; 'released' = was escalated, is now in the auto-pay queue.
-
 import type { Schedule, ScheduleEntry } from './types';
 
 export type ReplanChange = {
